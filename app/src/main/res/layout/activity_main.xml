@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/page"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <EditText
+        android:id="@+id/et_ip"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="20dp"
+        android:layout_marginTop="200dp"
+        android:ems="10"
+        android:hint="Input 3ds IP Address"
+        android:inputType="text"
+        android:text="192.168.50.143"
+        app:layout_constraintStart_toStartOf="@id/page"
+        app:layout_constraintTop_toTopOf="@id/page" />
+
+    <Button
+        android:id="@+id/bt_save"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="20dp"
+        android:text="Save"
+        app:layout_constraintBottom_toBottomOf="@id/et_ip"
+        app:layout_constraintLeft_toRightOf="@id/et_ip" />
+
+    <Button
+        android:id="@+id/bt_offScr"
+        android:layout_width="180dp"
+        android:layout_height="50dp"
+        android:layout_marginTop="50dp"
+        android:text="ScreenOff"
+        app:layout_constraintTop_toBottomOf="@id/bt_save"
+        app:layout_constraintLeft_toLeftOf="@id/et_ip"
+        android:layout_marginLeft="80dp"/>
+
+    <TextView
+        android:id="@+id/tv_ip_note"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="3DS IP:"
+        app:layout_constraintStart_toStartOf="@id/et_ip"
+        app:layout_constraintBottom_toTopOf="@id/et_ip"
+        android:layout_marginTop="5dp"/>
+</androidx.constraintlayout.widget.ConstraintLayout>
