@@ -116,7 +116,7 @@ void android_main(struct android_app *pApp) {
 }
 
 extern "C"
-JNIEXPORT void JNICALL
+JNIEXPORT jstring JNICALL
 Java_com_example_inputredirectionclient_1android_MainActivity_saveIPAddress(JNIEnv *env,
                                                                             jobject thiz,
                                                                             jstring input) {
@@ -133,6 +133,7 @@ Java_com_example_inputredirectionclient_1android_MainActivity_saveIPAddress(JNIE
         }
     }
     close(fd);
+    return env->NewStringUTF("Saved Successfully.");
 }
 
 extern "C"
