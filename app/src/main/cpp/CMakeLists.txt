@@ -7,20 +7,16 @@ project("inputredirectionclient_android")
 add_library(inputredirectionclient_android SHARED
         main.cpp
         AndroidOut.cpp
-        Utility.cpp)
+)
 
 # Searches for a package provided by the game activity dependency
 find_package(game-activity REQUIRED CONFIG)
-
+find_package(games-controller REQUIRED CONFIG)
 # Configure libraries CMake uses to link your target library.
 target_link_libraries(inputredirectionclient_android
         # The game activity
         game-activity::game-activity
-
-        # EGL and other dependent libraries required for drawing
-        # and interacting with Android system
-        EGL
-        GLESv3
+        games-controller::paddleboat_static
         jnigraphics
         android
         log)

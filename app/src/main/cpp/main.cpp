@@ -8,12 +8,14 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <paddleboat/paddleboat.h>
 
 const std::string CONFIG_FILE_NAME= "config";
 std::string CONFIG_FILE_PATH = "";
 const auto BUFFER_SIZE = 16;
 char ip[BUFFER_SIZE] = {0};
-
+struct android_app *gApp = nullptr;
+JNIEnv* gJNIEnv = nullptr;
 extern "C" {
 
 #include <game-activity/native_app_glue/android_native_app_glue.c>
@@ -67,12 +69,91 @@ bool motion_event_filter_func(const GameActivityMotionEvent *motionEvent) {
 
 }
 
+static JNIEnv* getJniEnv(struct android_app *pApp) {
+    JNIEnv * env = nullptr;
+    if(0 != pApp->activity->vm->AttachCurrentThread(&env, NULL))
+    {
+        aout << "Error: Failed to getJniEnv" << std::endl;
+    }
+    return env;
+}
+
+static int findActiveGameController()
+{
+    for(auto index=0; index<PADDLEBOAT_MAX_CONTROLLERS; ++index)
+    {
+        if(0 != Paddleboat_getControllerStatus(index))
+        {
+            return index;
+        }
+    }
+    return -1;
+}
+
+void getControllerInfo()
+{
+    int controllerIndex = findActiveGameController();
+    if(-1 == controllerIndex)
+    {
+        aout << "Info: Game controller is disconnected." << std::endl;
+        return;
+    }
+    char controllerName[32] = {0};
+    aout << "Info: Find active controller, id:" << controllerIndex << "." << std::endl;
+    if(PADDLEBOAT_NO_ERROR != Paddleboat_getControllerName(controllerIndex, 32, controllerName))
+    {
+        aout << "Warrning: Failed to get controller name." << std::endl;
+    }
+    aout << "Info: Controller name: " << controllerName << std::endl;
+    Paddleboat_Controller_Info controllerInfo;
+    if(PADDLEBOAT_NO_ERROR != Paddleboat_getControllerInfo(controllerIndex, &controllerInfo))
+    {
+        aout << "Warrning: Failed to get controller info." << std::endl;
+    }
+    auto btLayout = controllerInfo.controllerFlags&PADDLEBOAT_CONTROLLER_LAYOUT_MASK;
+    switch((Paddleboat_ControllerButtonLayout)btLayout)
+    {
+        case PADDLEBOAT_CONTROLLER_LAYOUT_STANDARD:
+            aout << "Info: Xbox layout" << std::endl;
+            break;
+        case PADDLEBOAT_CONTROLLER_LAYOUT_SHAPES:
+            aout << "Info: PS layout" << std::endl;
+            break;
+        case PADDLEBOAT_CONTROLLER_LAYOUT_REVERSE:
+            aout << "Info: NS layout" << std::endl;
+            break;
+        default:
+            aout << "Info: Other layout" << std::endl;
+    }
+#if 0
+    Paddleboat_Controller_Mapping_Data mapData;
+    Paddleboat_getControllerRemapTableData(1, &mapData);
+    mapData.flags = PADDLEBOAT_CONTROLLER_LAYOUT_REVERSE;
+    Paddleboat_addControllerRemapData(PADDLEBOAT_REMAP_ADD_MODE_DEFAULT, 1, &mapData);
+#endif
+}
+
+void initControllerLib()
+{
+    if(PADDLEBOAT_NO_ERROR != Paddleboat_init(gJNIEnv, gApp->activity->javaGameActivity))
+    {
+        aout << "Error: Failed to init Game Controller lib." << std::endl;
+        abort();
+    }
+    if(!Paddleboat_isInitialized())
+    {
+        aout << "Error: Failed to init Game Controller lib." << std::endl;
+        abort();
+    }
+    Paddleboat_update(gJNIEnv);
+}
 /*!
  * This the main entry point for a native activity
  */
 void android_main(struct android_app *pApp) {
     // Can be removed, useful to ensure your code is running
     aout << "Welcome to android_main" << std::endl;
+    gApp = pApp;
     // Register an event handler for Android events
     pApp->onAppCmd = handle_cmd;
 
@@ -80,6 +161,16 @@ void android_main(struct android_app *pApp) {
     // Note that for key inputs, this example uses the default default_key_filter()
     // implemented in android_native_app_glue.c.
     android_app_set_motion_event_filter(pApp, motion_event_filter_func);
+
+    gJNIEnv = getJniEnv(pApp);
+    if(gJNIEnv == nullptr)
+    {
+        aout << "Error: Failed to get JNIEnv. Abort." << std::endl;
+        abort();
+    }
+
+    initControllerLib();
+    getControllerInfo();
 
     // This sets up a typical game/event loop. It will run until the app is destroyed.
     do {
@@ -112,14 +203,19 @@ void android_main(struct android_app *pApp) {
         }
 
     } while (!pApp->destroyRequested);
+    if(Paddleboat_isInitialized())
+    {
+        Paddleboat_destroy(gJNIEnv);
+        aout << "Info: Destory Game Controller lib." << std::endl;
+    }
 }
 }
 
 extern "C"
 JNIEXPORT jstring JNICALL
 Java_com_example_inputredirectionclient_1android_MainActivity_saveIPAddress(JNIEnv *env,
-                                                                            jobject thiz,
-                                                                            jstring input) {
+                            jobject thiz,
+                            jstring input) {
     std::string ip = env->GetStringUTFChars(input, nullptr);
     aout << "Update IpAddress:" << ip << std::endl;
     auto fd = 0;
@@ -139,8 +235,8 @@ Java_com_example_inputredirectionclient_1android_MainActivity_saveIPAddress(JNIE
 extern "C"
 JNIEXPORT jstring JNICALL
 Java_com_example_inputredirectionclient_1android_MainActivity_getSavedIPAddress(JNIEnv *env,
-                                                                                jobject thiz,
-                                                                                jstring inPath) {
+                                jobject thiz,
+                                jstring inPath) {
     CONFIG_FILE_PATH = env->GetStringUTFChars(inPath, nullptr);
     auto fd = 0;
     auto fcfg = CONFIG_FILE_PATH + "/" + CONFIG_FILE_NAME;
