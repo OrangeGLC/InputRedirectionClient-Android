@@ -25,6 +25,7 @@ public class MainActivity extends GameActivity {
     private Button bt_offScr;
     public native String saveIPAddress(String input);
     public native String getSavedIPAddress(String inPath);
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
