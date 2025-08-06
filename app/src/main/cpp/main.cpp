@@ -11,52 +11,24 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include "Gamepad.h"
+#include <math.h>
 
+#define EPSILON 1e-7
 #define TAG "GamepadInput"
 #define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, TAG, __VA_ARGS__)
+
+#define CPAD_BOUND          0x5d0
+#define CPP_BOUND           0x7f
+
+#define TOUCH_SCREEN_WIDTH  320
+#define TOUCH_SCREEN_HEIGHT 240
+
+#define DEADZONE_MIN 	    0.05f
 
 typedef uint32_t u32;
 typedef uint16_t u16;
 typedef uint8_t u8;
-
-#define GAMEPAD_BUTTON_A    (96)
-#define GAMEPAD_BUTTON_B    (97)
-#define GAMEPAD_BUTTON_X    (99)
-#define GAMEPAD_BUTTON_Y    (100)
-#define GAMEPAD_BUTTON_UP    (19) //ns pro controller only
-#define GAMEPAD_BUTTON_DOWN  (20) //ns pro controller only
-#define GAMEPAD_BUTTON_L    (21) //ns pro controller only
-#define GAMEPAD_BUTTON_R    (22) //ns pro controller only
-#define GAMEPAD_BUTTON_LB   (102)
-#define GAMEPAD_BUTTON_RB   (103)
-#define GAMEPAD_BUTTON_L3   (106)
-#define GAMEPAD_BUTTON_R3   (107)
-#define GAMEPAD_BUTTON_LT   (104) //ns pro controller only
-#define GAMEPAD_BUTTON_RT   (105) //ns pro controller only
-#define GAMEPAD_BUTTON_START    (108)
-#define GAMEPAD_BUTTON_SELECT   (109)
-#define GAMEPAD_BUTTON_SCRSHOT   (110) //ns pro controller only
-#define GAMEPAD_BUTTON_SHARE   (130) //xbox controller only
-
-#define GAMEPAD_BUTTON_A_OFFSET    (0)
-#define GAMEPAD_BUTTON_B_OFFSET    (1)
-#define GAMEPAD_BUTTON_SELECT_OFFSET   (2)
-#define GAMEPAD_BUTTON_START_OFFSET    (3)
-#define GAMEPAD_BUTTON_R_OFFSET    (4) //ns pro controller only
-#define GAMEPAD_BUTTON_L_OFFSET    (5) //ns pro controller only
-#define GAMEPAD_BUTTON_UP_OFFSET    (6) //ns pro controller only
-#define GAMEPAD_BUTTON_DOWN_OFFSET  (7) //ns pro controller only
-#define GAMEPAD_BUTTON_RB_OFFSET   (8)
-#define GAMEPAD_BUTTON_LB_OFFSET   (9)
-#define GAMEPAD_BUTTON_RT_OFFSET   (8) //ns pro controller only
-#define GAMEPAD_BUTTON_LT_OFFSET   (9) //ns pro controller only
-#define GAMEPAD_BUTTON_X_OFFSET    (10)
-#define GAMEPAD_BUTTON_Y_OFFSET    (11)
-
-#define GAMEPAD_BUTTON_L3_OFFSET   (106)
-#define GAMEPAD_BUTTON_R3_OFFSET   (107)
-#define GAMEPAD_BUTTON_SCRSHOT_OFFSET   (110) //ns pro controller only
-#define GAMEPAD_BUTTON_SHARE_OFFSET   (130) //xbox controller only
 
 
 const std::string CONFIG_FILE_NAME= "config";
@@ -64,7 +36,12 @@ std::string CONFIG_FILE_PATH = "";
 const auto BUFFER_SIZE = 16;
 std::string ip;
 struct android_app *gApp = nullptr;
+
+
 JNIEnv* gJNIEnv = nullptr;
+const float yAxisMultiplier = 1.0f;
+KEY_STATE gKeysState[KEY_INDEX_INVALID];
+AxisValue gJoystick[JOYSTICK_INVALID];
 
 extern "C" {
 
@@ -130,29 +107,164 @@ void initController()
     GameActivityPointerAxes_enableAxis(AMOTION_EVENT_AXIS_HAT_Y); //xbox left ↑(-1) ↓(1)
     GameActivityPointerAxes_enableAxis(AMOTION_EVENT_AXIS_BRAKE); //xbox LT
     GameActivityPointerAxes_enableAxis(AMOTION_EVENT_AXIS_GAS); //xbox RT
+
+    //init keys state
+    for(auto i=0;i<KEY_INDEX_INVALID;++i)
+    {
+        gKeysState[i] = KEY_STATE_UP;
+    }
+    for(auto i=0;i<JOYSTICK_INVALID;++i)
+    {
+        gJoystick[i].x = 0.0f;
+        gJoystick[i].y = 0.0f;
+    }
 }
 
-void sendFrame(u32 hidPad, u32 touchScreenState, u32 circlePadState, u32 cppState, u32 interfaceButtons) {
-    unsigned char ba[20] = {};
-    memcpy(ba, &hidPad, 4);
-    memcpy(ba + 4, &touchScreenState, 4);
-    memcpy(ba + 8, &circlePadState, 4);
-    memcpy(ba + 12, &cppState, 4);
-    memcpy(ba + 16, &interfaceButtons, 4);
-    aout << "Send to IP: " << ip << std::endl;
+void sendFrame(char* frame) {
     const int sock = socket(AF_INET, SOCK_DGRAM, 0);
     if (sock < 0) return;
     sockaddr_in addr = {};
     addr.sin_family = AF_INET;
     addr.sin_port = htons(4950);
     inet_pton(AF_INET, ip.c_str(), &addr.sin_addr);
-    sendto(sock, ba, 20, 0, reinterpret_cast<sockaddr *>(&addr), sizeof(addr));
+    sendto(sock, frame, 20, 0, reinterpret_cast<sockaddr *>(&addr), sizeof(addr));
     close(sock);
+}
+
+
+void generateKeysCode(u32* pKeyCode, u32* pZLZRCode, u32* pCirclePadState, u32* pCppState) {
+    if(pKeyCode == nullptr || pZLZRCode == nullptr ||
+        pCirclePadState == nullptr || pCppState == nullptr)
+    {
+        aout << "Error: Line " << __LINE__ << ": Nullptr." << std::endl;
+        return;
+    }
+    u32& hidPad = *pKeyCode;
+    u32& irButtonsState = *pZLZRCode;
+    u32& circlePadState = *pCirclePadState;
+    u32& cppState = *pCppState;
+    float& lx = gJoystick[JOYSTICK_L].x;
+    float& ly = gJoystick[JOYSTICK_L].y;
+    float& rx = gJoystick[JOYSTICK_R].x;
+    float& ry = gJoystick[JOYSTICK_R].y;
+
+    hidPad = 0xfff;
+    irButtonsState = 0;
+    circlePadState = 0x7ff7ff;
+    cppState = 0x80800081;
+
+    for(auto i=0; i<KEY_INDEX_INVALID; ++i)
+    {
+        if(gKeysState[i] != KEY_STATE_DOWN)
+            continue;
+
+        switch(i)
+        {
+            case KEY_INDEX_A:
+                hidPad &= ~(1 << GAMEPAD_BUTTON_A_OFFSET);
+                continue;
+            case KEY_INDEX_B:
+                hidPad &= ~(1 << GAMEPAD_BUTTON_B_OFFSET);
+                continue;
+            case KEY_INDEX_X:
+                hidPad &= ~(1 << GAMEPAD_BUTTON_X_OFFSET);
+                continue;
+            case KEY_INDEX_Y:
+                hidPad &= ~(1 << GAMEPAD_BUTTON_Y_OFFSET);
+                continue;
+            case KEY_INDEX_SELECT:
+                hidPad &= ~(1 << GAMEPAD_BUTTON_SELECT_OFFSET);
+                continue;
+            case KEY_INDEX_START:
+                hidPad &= ~(1 << GAMEPAD_BUTTON_START_OFFSET);
+                continue;
+            case KEY_INDEX_LB:
+                hidPad &= ~(1 << GAMEPAD_BUTTON_LB_OFFSET);
+                continue;
+            case KEY_INDEX_RB:
+                hidPad &= ~(1 << GAMEPAD_BUTTON_RB_OFFSET);
+                continue;
+            case KEY_INDEX_LT:
+                irButtonsState |= 1 << GAMEPAD_BUTTON_LT_OFFSET;
+                continue;
+            case KEY_INDEX_RT:
+                irButtonsState |= 1 << GAMEPAD_BUTTON_RT_OFFSET;
+                continue;
+            /*case KEY_INDEX_L3://Map to LT
+                hidPad &= ~(1 << GAMEPAD_BUTTON_LT_OFFSET);
+                continue;
+            case KEY_INDEX_R3://Map to RT
+                hidPad &= ~(1 << GAMEPAD_BUTTON_RT_OFFSET);
+                continue;*/
+            case KEY_INDEX_UP:
+                hidPad &= ~(1 << GAMEPAD_BUTTON_UP_OFFSET);
+                continue;
+            case KEY_INDEX_DOWN:
+                hidPad &= ~(1 << GAMEPAD_BUTTON_DOWN_OFFSET);
+                continue;
+            case KEY_INDEX_LEFT:
+                hidPad &= ~(1 << GAMEPAD_BUTTON_LEFT_OFFSET);
+                continue;
+            case KEY_INDEX_RIGHT:
+                hidPad &= ~(1 << GAMEPAD_BUTTON_RIGHT_OFFSET);
+                continue;
+            default:
+                continue;
+        }
+    }
+
+    if (lx < DEADZONE_MIN && lx > -DEADZONE_MIN) lx = 0.0;
+    if (ly < DEADZONE_MIN && ly > -DEADZONE_MIN) ly = 0.0;
+    if (rx < DEADZONE_MIN && rx > -DEADZONE_MIN) rx = 0.0;
+    if (ry < DEADZONE_MIN && ry > -DEADZONE_MIN) ry = 0.0;
+
+    if(lx != 0.0 || ly != 0.0)
+    {
+        u32 x = (u32)(lx * CPAD_BOUND + 0x800);
+        u32 y = (u32)(ly * CPAD_BOUND + 0x800);
+        x = x >= 0xfff ? (lx < 0.0 ? 0x000 : 0xfff) : x;
+        y = y >= 0xfff ? (ly < 0.0 ? 0x000 : 0xfff) : y;
+        circlePadState = (y << 12) | x;
+    }
+
+    if(rx != 0.0 || ry != 0.0 || irButtonsState != 0)
+    {
+        // We have to rotate the c-stick position 45°. Thanks, Nintendo.
+        u32 x = (u32)(M_SQRT1_2 * (rx + ry) * CPP_BOUND + 0x80);
+        u32 y = (u32)(M_SQRT1_2 * (ry - rx) * CPP_BOUND + 0x80);
+        x = x >= 0xff ? (rx < 0.0 ? 0x00 : 0xff) : x;
+        y = y >= 0xff ? (ry < 0.0 ? 0x00 : 0xff) : y;
+
+        cppState = (y << 24) | (x << 16) | (irButtonsState << 8) | 0x81;
+    }
+}
+
+char* generateFrame(char* buffer, size_t size) {
+    if(buffer == nullptr || size < 20)
+    {
+        aout<< "Error: Line " << __LINE__ << ": Nullptr or buffer size is insufficient." << std::endl;
+        return buffer;
+    }
+    u32 hidPad = 0;
+    u32 touchScreenState = 0x2000000;
+    u32 circlePadState = 0;
+    u32 cppState = 0;
+    u32 interfaceButtons = 0;
+    generateKeysCode(&hidPad,
+                     &interfaceButtons,
+                     &circlePadState,
+                     &cppState
+                     );
+    memcpy(buffer, &hidPad, 4);
+    memcpy(buffer + 4, &touchScreenState, 4);
+    memcpy(buffer + 8, &circlePadState, 4);
+    memcpy(buffer + 12, &cppState, 4);
+    memcpy(buffer + 16, &interfaceButtons, 4);
+    return buffer;
 }
 
 void handleInput()
 {
-    u32 hidPad = 0xfff;
     if(gApp == nullptr)
     {
         aout << "Warrning: gApp is not initialized." << std::endl;
@@ -164,91 +276,127 @@ void handleInput()
         return;
     }
 
-    if (inputBuffer->keyEventsCount != 0) {
-        GameActivityKeyEvent* keyEvent = &inputBuffer->keyEvents[0];
-        if (keyEvent->source & AINPUT_SOURCE_GAMEPAD)  {
-            for(int i=0; i<inputBuffer->keyEventsCount; ++i) {
-                if(keyEvent->action == AKEY_EVENT_ACTION_DOWN)
+    if (inputBuffer->keyEventsCount != 0)
+    {
+        for(int i=0; i<inputBuffer->keyEventsCount; ++i)
+        {
+            GameActivityKeyEvent* keyEvent = &inputBuffer->keyEvents[i];
+            if (keyEvent->source & AINPUT_SOURCE_GAMEPAD)
+            {
+                switch (keyEvent->keyCode)
                 {
-                    switch (keyEvent->keyCode)
-                    {
-                        case GAMEPAD_BUTTON_A:
-                            hidPad &= ~(1 << GAMEPAD_BUTTON_A_OFFSET);
-                            break;
-                        case GAMEPAD_BUTTON_B:
-                            hidPad &= ~(1 << GAMEPAD_BUTTON_B_OFFSET);
-                            break;
-                        case GAMEPAD_BUTTON_SELECT:
-                            hidPad &= ~(1 << GAMEPAD_BUTTON_SELECT_OFFSET);
-                            break;
-                        case GAMEPAD_BUTTON_START:
-                            hidPad &= ~(1 << GAMEPAD_BUTTON_START_OFFSET);
-                            break;
-                        case GAMEPAD_BUTTON_R:
-                            hidPad &= ~(1 << GAMEPAD_BUTTON_R_OFFSET);
-                            break;
-                        case GAMEPAD_BUTTON_L:
-                            hidPad &= ~(1 << GAMEPAD_BUTTON_L_OFFSET);
-                            break;
-                        case GAMEPAD_BUTTON_RB:
-                            hidPad &= ~(1 << GAMEPAD_BUTTON_RB_OFFSET);
-                            break;
-                        case GAMEPAD_BUTTON_LB:
-                            hidPad &= ~(1 << GAMEPAD_BUTTON_LB_OFFSET);
-                            break;
-                        case GAMEPAD_BUTTON_LT:
-                            hidPad &= ~(1 << GAMEPAD_BUTTON_LT_OFFSET);
-                            break;
-                        case GAMEPAD_BUTTON_RT:
-                            hidPad &= ~(1 << GAMEPAD_BUTTON_RT_OFFSET);
-                            break;
-                        case GAMEPAD_BUTTON_X:
-                            hidPad &= ~(1 << GAMEPAD_BUTTON_X_OFFSET);
-                            break;
-                        case GAMEPAD_BUTTON_Y:
-                            hidPad &= ~(1 << GAMEPAD_BUTTON_Y_OFFSET);
-                            break;
-                        default:
-                            continue;
-                    }
+                    case GAMEPAD_BUTTON_A:
+                        gKeysState[KEY_INDEX_A] = keyEvent->action == AKEY_EVENT_ACTION_DOWN?KEY_STATE_DOWN:KEY_STATE_UP;
+                        break;
+                    case GAMEPAD_BUTTON_B:
+                        gKeysState[KEY_INDEX_B] = keyEvent->action == AKEY_EVENT_ACTION_DOWN?KEY_STATE_DOWN:KEY_STATE_UP;
+                        break;
+                    case GAMEPAD_BUTTON_SELECT:
+                        gKeysState[KEY_INDEX_SELECT] = keyEvent->action == AKEY_EVENT_ACTION_DOWN?KEY_STATE_DOWN:KEY_STATE_UP;
+                        break;
+                    case GAMEPAD_BUTTON_START:
+                        gKeysState[KEY_INDEX_START] = keyEvent->action == AKEY_EVENT_ACTION_DOWN?KEY_STATE_DOWN:KEY_STATE_UP;
+                        break;
+                    case GAMEPAD_BUTTON_RIGHT:
+                        gKeysState[KEY_INDEX_RIGHT] = keyEvent->action == AKEY_EVENT_ACTION_DOWN?KEY_STATE_DOWN:KEY_STATE_UP;
+                        break;
+                    case GAMEPAD_BUTTON_LEFT:
+                        gKeysState[KEY_INDEX_LEFT] = keyEvent->action == AKEY_EVENT_ACTION_DOWN?KEY_STATE_DOWN:KEY_STATE_UP;
+                        break;
+                    case GAMEPAD_BUTTON_DOWN:
+                        gKeysState[KEY_INDEX_DOWN] = keyEvent->action == AKEY_EVENT_ACTION_DOWN?KEY_STATE_DOWN:KEY_STATE_UP;
+                        break;
+                    case GAMEPAD_BUTTON_UP:
+                        gKeysState[KEY_INDEX_UP] = keyEvent->action == AKEY_EVENT_ACTION_DOWN?KEY_STATE_DOWN:KEY_STATE_UP;
+                        break;
+                    case GAMEPAD_BUTTON_RB:
+                        gKeysState[KEY_INDEX_RB] = keyEvent->action == AKEY_EVENT_ACTION_DOWN?KEY_STATE_DOWN:KEY_STATE_UP;
+                        break;
+                    case GAMEPAD_BUTTON_LB:
+                        gKeysState[KEY_INDEX_LB] = keyEvent->action == AKEY_EVENT_ACTION_DOWN?KEY_STATE_DOWN:KEY_STATE_UP;
+                        break;
+                    case GAMEPAD_BUTTON_LT:
+                        gKeysState[KEY_INDEX_LT] = keyEvent->action == AKEY_EVENT_ACTION_DOWN?KEY_STATE_DOWN:KEY_STATE_UP;
+                        break;
+                    case GAMEPAD_BUTTON_RT:
+                        gKeysState[KEY_INDEX_RT] = keyEvent->action == AKEY_EVENT_ACTION_DOWN?KEY_STATE_DOWN:KEY_STATE_UP;
+                        break;
+                    case GAMEPAD_BUTTON_X:
+                        gKeysState[KEY_INDEX_X] = keyEvent->action == AKEY_EVENT_ACTION_DOWN?KEY_STATE_DOWN:KEY_STATE_UP;
+                        break;
+                    case GAMEPAD_BUTTON_Y:
+                        gKeysState[KEY_INDEX_Y] = keyEvent->action == AKEY_EVENT_ACTION_DOWN?KEY_STATE_DOWN:KEY_STATE_UP;
+                        break;
+                    default:
+                        break;
                 }
             }
-
             LOGI("Key %s code=%d action=%s",
                  (keyEvent->action == AKEY_EVENT_ACTION_DOWN) ? "↓" : "↑",
                  keyEvent->keyCode,
                  (keyEvent->action == AKEY_EVENT_ACTION_DOWN) ? "DOWN" : "UP");
         }
-        android_app_clear_key_events(inputBuffer);
+
     }
+    android_app_clear_key_events(inputBuffer);
     if (inputBuffer->motionEventsCount != 0) {
         for (uint64_t i = 0; i < inputBuffer->motionEventsCount; ++i) {
             GameActivityMotionEvent* motionEvent = &inputBuffer->motionEvents[i];
             if (motionEvent->source & AINPUT_SOURCE_JOYSTICK) {
-                float lx = GameActivityPointerAxes_getAxisValue(&motionEvent->pointers[0],
+                gJoystick[JOYSTICK_L].x = GameActivityPointerAxes_getAxisValue(&motionEvent->pointers[0],
                                                                 AMOTION_EVENT_AXIS_X);
-                float ly = GameActivityPointerAxes_getAxisValue(&motionEvent->pointers[0],
-                                                                AMOTION_EVENT_AXIS_Y);
-                float hx = GameActivityPointerAxes_getAxisValue(&motionEvent->pointers[0],
-                                                                AMOTION_EVENT_AXIS_HAT_X);
-                float hy = GameActivityPointerAxes_getAxisValue(&motionEvent->pointers[0],
-                                                                AMOTION_EVENT_AXIS_HAT_Y);
-                float lt = GameActivityPointerAxes_getAxisValue(&motionEvent->pointers[0],
-                                                                AMOTION_EVENT_AXIS_BRAKE);
-                float rt = GameActivityPointerAxes_getAxisValue(&motionEvent->pointers[0],
-                                                                AMOTION_EVENT_AXIS_GAS);
-                float rx = GameActivityPointerAxes_getAxisValue(&motionEvent->pointers[0],
+                gJoystick[JOYSTICK_L].y = -GameActivityPointerAxes_getAxisValue(&motionEvent->pointers[0],
+                                                                AMOTION_EVENT_AXIS_Y) * yAxisMultiplier;
+                gJoystick[JOYSTICK_R].x = GameActivityPointerAxes_getAxisValue(&motionEvent->pointers[0],
                                                                 AMOTION_EVENT_AXIS_Z);
-                float ry = GameActivityPointerAxes_getAxisValue(&motionEvent->pointers[0],
-                                                                AMOTION_EVENT_AXIS_RZ);
+                gJoystick[JOYSTICK_R].y = -GameActivityPointerAxes_getAxisValue(&motionEvent->pointers[0],
+                                                                 AMOTION_EVENT_AXIS_RZ) * yAxisMultiplier;
+                int hx = static_cast<int>(GameActivityPointerAxes_getAxisValue(&motionEvent->pointers[0],
+                                                                AMOTION_EVENT_AXIS_HAT_X));
+                int hy = static_cast<int>(GameActivityPointerAxes_getAxisValue(&motionEvent->pointers[0],
+                                                                AMOTION_EVENT_AXIS_HAT_Y));
+                int lt = static_cast<int>(GameActivityPointerAxes_getAxisValue(&motionEvent->pointers[0],
+                                                                AMOTION_EVENT_AXIS_BRAKE) * 1000);
+                int rt = static_cast<int>(GameActivityPointerAxes_getAxisValue(&motionEvent->pointers[0],
+                                                                AMOTION_EVENT_AXIS_GAS) * 1000);
 
-                LOGI("Stick LX=%.3f LY=%.3f RX=%.3f RY=%.3f LLR=%.3f LUD=%.3f LT=%.3f RT=%.3f",
-                     lx, ly, rx, ry, hx, hy, lt, rt);
+                LOGI("Stick LX=%.3f LY=%.3f RX=%.3f RY=%.3f LLR=%d LUD=%d LT=%d RT=%d",
+                     gJoystick[JOYSTICK_L].x, gJoystick[JOYSTICK_L].y,
+                     gJoystick[JOYSTICK_R].x, gJoystick[JOYSTICK_R].y,
+                     hx, hy, lt, rt);
+                switch(hx)
+                {
+                    case 1:
+                        gKeysState[KEY_INDEX_RIGHT] = KEY_STATE_DOWN;
+                        break;
+                    case -1:
+                        gKeysState[KEY_INDEX_LEFT] = KEY_STATE_DOWN;
+                        break;
+                    default:
+                        gKeysState[KEY_INDEX_LEFT] = KEY_STATE_UP;
+                        gKeysState[KEY_INDEX_RIGHT] = KEY_STATE_UP;
+                }
+                switch(hy)
+                {
+                    case 1:
+                        gKeysState[KEY_INDEX_DOWN] = KEY_STATE_DOWN;
+                        break;
+                    case -1:
+                        gKeysState[KEY_INDEX_UP] = KEY_STATE_DOWN;
+                        break;
+                    default:
+                        gKeysState[KEY_INDEX_UP] = KEY_STATE_UP;
+                        gKeysState[KEY_INDEX_DOWN] = KEY_STATE_UP;
+                }
+
+                gKeysState[KEY_INDEX_LT] = lt>0?KEY_STATE_DOWN:KEY_STATE_UP;
+                gKeysState[KEY_INDEX_RT] = rt>0?KEY_STATE_DOWN:KEY_STATE_UP;
             }
         }
         android_app_clear_motion_events(inputBuffer);
     }
-    sendFrame(hidPad, 0x2000000, 0x7ff7ff,0x80800081,0);
+    char buffer[20];
+    sendFrame(generateFrame(buffer, 20));
 }
 /*!
  * This the main entry point for a native activity
