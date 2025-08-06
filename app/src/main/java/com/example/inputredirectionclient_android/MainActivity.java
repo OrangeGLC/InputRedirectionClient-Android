@@ -3,6 +3,7 @@ package com.example.inputredirectionclient_android;
 import android.app.Activity;
 import android.content.Context;
 import android.os.Bundle;
+import android.view.KeyEvent;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
@@ -25,7 +26,7 @@ public class MainActivity extends GameActivity {
     private Button bt_offScr;
     public native String saveIPAddress(String input);
     public native String getSavedIPAddress(String inPath);
-
+    public native void handleKeyEvent(int keyCode, int action, int source);
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -38,6 +39,13 @@ public class MainActivity extends GameActivity {
 
         bt_save = findViewById(R.id.bt_save);
         bt_offScr = findViewById(R.id.bt_offScr);
+        et_ip.setOnKeyListener(new View.OnKeyListener() {
+            @Override
+            public boolean onKey(View view, int i, KeyEvent keyEvent) {
+                handleKeyEvent(keyEvent.getKeyCode(), keyEvent.getAction(), keyEvent.getSource());
+                return false;
+            }
+        });
         //Check the validity of the IP address.
         bt_save.setOnClickListener(new View.OnClickListener() {
             @Override
