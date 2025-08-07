@@ -1,4 +1,4 @@
-package com.example.inputredirectionclient_android;
+package com.jingrong.inputredirectionclient_android;
 
 import android.app.Activity;
 import android.content.Context;
@@ -81,7 +81,7 @@ public class MainActivity extends GameActivity {
     private void showErrorDialog() {
         new AlertDialog.Builder(this)
                 .setTitle("Error: Invalid IP Address.")
-                .setMessage("Correct IP address consists of numbers and periods, for example 192.168.10.20")
+                .setMessage("Correct IP address consists of numbers and periods, for example, 192.168.10.20")
                 .setPositiveButton("Close", null)
                 .show();
     }

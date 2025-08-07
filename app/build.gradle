@@ -3,11 +3,11 @@ plugins {
 }
 
 android {
-    namespace 'com.example.inputredirectionclient_android'
+    namespace 'com.jingrong.inputredirectionclient_android'
     compileSdk 36
 
     defaultConfig {
-        applicationId "com.example.inputredirectionclient_android"
+        applicationId "com.jingrong.inputredirectionclient_android"
         minSdk 33
         targetSdk 36
         versionCode 1

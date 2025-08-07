@@ -454,7 +454,7 @@ void android_main(struct android_app *pApp) {
 
 extern "C"
 JNIEXPORT jstring JNICALL
-Java_com_example_inputredirectionclient_1android_MainActivity_saveIPAddress(JNIEnv *env,
+Java_com_jingrong_inputredirectionclient_1android_MainActivity_saveIPAddress(JNIEnv *env,
                             jobject thiz,
                             jstring input) {
     ip = env->GetStringUTFChars(input, nullptr);
@@ -475,7 +475,7 @@ Java_com_example_inputredirectionclient_1android_MainActivity_saveIPAddress(JNIE
 
 extern "C"
 JNIEXPORT jstring JNICALL
-Java_com_example_inputredirectionclient_1android_MainActivity_getSavedIPAddress(JNIEnv *env,
+Java_com_jingrong_inputredirectionclient_1android_MainActivity_getSavedIPAddress(JNIEnv *env,
                                 jobject thiz,
                                 jstring inPath) {
     CONFIG_FILE_PATH = env->GetStringUTFChars(inPath, nullptr);
@@ -502,7 +502,7 @@ Java_com_example_inputredirectionclient_1android_MainActivity_getSavedIPAddress(
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_com_example_inputredirectionclient_1android_MainActivity_handleKeyEvent(JNIEnv *env,
+Java_com_jingrong_inputredirectionclient_1android_MainActivity_handleKeyEvent(JNIEnv *env,
                                                                              jobject thiz,
                                                                              jint keyCode,
                                                                              jint action,
