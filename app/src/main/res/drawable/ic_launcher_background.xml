@@ -1,8 +1,21 @@
-<!-- res/drawable/ic_gradient_background.xml -->
-<shape android:shape="rectangle"
-    xmlns:android="http://schemas.android.com/apk/res/android">
-    <gradient
-        android:startColor="#FF6D00"
-        android:endColor="#FFD600"
-        android:angle="45"/>
-</shape>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:autoMirrored="true"
+    android:height="1024dp"
+    android:viewportHeight="1024"
+    android:viewportWidth="1024"
+    android:width="1024dp">
+    <path android:pathData="M0,0h1024v1024h-1024z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="0"
+                android:startY="1024"
+                android:endX="1024"
+                android:endY="0">
+                <item android:color="#FF2196F3" android:offset="0"/>
+                <item android:color="#FF03DAC5" android:offset="1"/>
+            </gradient>
+        </aapt:attr>
+    </path>
+</vector>
