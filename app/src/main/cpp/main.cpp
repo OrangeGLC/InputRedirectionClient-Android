@@ -102,6 +102,8 @@ void initController()
     GameActivityPointerAxes_enableAxis(AMOTION_EVENT_AXIS_HAT_Y); //xbox left ↑(-1) ↓(1)
     GameActivityPointerAxes_enableAxis(AMOTION_EVENT_AXIS_BRAKE); //xbox LT
     GameActivityPointerAxes_enableAxis(AMOTION_EVENT_AXIS_GAS); //xbox RT
+    GameActivityPointerAxes_enableAxis(AMOTION_EVENT_AXIS_RX); //joy-con_R
+    GameActivityPointerAxes_enableAxis(AMOTION_EVENT_AXIS_RY); //joy-con_R
 
     //init keys state
     for(auto i=0;i<KEY_INDEX_INVALID;++i)
@@ -127,17 +129,8 @@ void sendFrame(char* frame) {
 }
 
 
-void generateKeysCode(u32* pKeyCode, u32* pCirclePadState, u32* pCppState) {
-    if(pKeyCode == nullptr ||
-        pCirclePadState == nullptr || pCppState == nullptr)
-    {
-        aout << "Error: Line " << __LINE__ << ": Nullptr." << std::endl;
-        return;
-    }
-    u32& hidPad = *pKeyCode;
+void generateKeysCode(u32& hidPad, u32& circlePadState, u32& cppState, u32& interfaceButtons) {
     u32 irButtonsState = 0;
-    u32& circlePadState = *pCirclePadState;
-    u32& cppState = *pCppState;
     float& lx = gJoystick[JOYSTICK_L].x;
     float& ly = gJoystick[JOYSTICK_L].y;
     float& rx = gJoystick[JOYSTICK_R].x;
@@ -155,52 +148,55 @@ void generateKeysCode(u32* pKeyCode, u32* pCirclePadState, u32* pCppState) {
         switch(i)
         {
             case KEY_INDEX_A:
-                hidPad &= ~(1 << GAMEPAD_BUTTON_A_OFFSET);
+                hidPad &= ~(1 << N3DS_BUTTON_A);
                 continue;
             case KEY_INDEX_B:
-                hidPad &= ~(1 << GAMEPAD_BUTTON_B_OFFSET);
+                hidPad &= ~(1 << N3DS_BUTTON_B);
                 continue;
             case KEY_INDEX_X:
-                hidPad &= ~(1 << GAMEPAD_BUTTON_X_OFFSET);
+                hidPad &= ~(1 << N3DS_BUTTON_X);
                 continue;
             case KEY_INDEX_Y:
-                hidPad &= ~(1 << GAMEPAD_BUTTON_Y_OFFSET);
+                hidPad &= ~(1 << N3DS_BUTTON_Y);
                 continue;
             case KEY_INDEX_SELECT:
-                hidPad &= ~(1 << GAMEPAD_BUTTON_SELECT_OFFSET);
+                hidPad &= ~(1 << N3DS_BUTTON_SELECT);
                 continue;
             case KEY_INDEX_START:
-                hidPad &= ~(1 << GAMEPAD_BUTTON_START_OFFSET);
+                hidPad &= ~(1 << N3DS_BUTTON_START);
                 continue;
             case KEY_INDEX_LB:
-                hidPad &= ~(1 << GAMEPAD_BUTTON_LB_OFFSET);
+                hidPad &= ~(1 << N3DS_BUTTON_L);
                 continue;
             case KEY_INDEX_RB:
-                hidPad &= ~(1 << GAMEPAD_BUTTON_RB_OFFSET);
+                hidPad &= ~(1 << N3DS_BUTTON_R);
                 continue;
             case KEY_INDEX_LT:
-                irButtonsState |= 1 << GAMEPAD_BUTTON_LT_OFFSET;
+                irButtonsState |= 1 << N3DS_BUTTON_ZL;
                 continue;
             case KEY_INDEX_RT:
-                irButtonsState |= 1 << GAMEPAD_BUTTON_RT_OFFSET;
+                irButtonsState |= 1 << N3DS_BUTTON_ZR;
                 continue;
             /*case KEY_INDEX_L3://Map to LT
-                hidPad &= ~(1 << GAMEPAD_BUTTON_LT_OFFSET);
-                continue;
-            case KEY_INDEX_R3://Map to RT
-                hidPad &= ~(1 << GAMEPAD_BUTTON_RT_OFFSET);
+                hidPad &= ~(1 << N3DS_BUTTON_LT);
                 continue;*/
             case KEY_INDEX_UP:
-                hidPad &= ~(1 << GAMEPAD_BUTTON_UP_OFFSET);
+                hidPad &= ~(1 << N3DS_BUTTON_UP);
                 continue;
             case KEY_INDEX_DOWN:
-                hidPad &= ~(1 << GAMEPAD_BUTTON_DOWN_OFFSET);
+                hidPad &= ~(1 << N3DS_BUTTON_DOWN);
                 continue;
             case KEY_INDEX_LEFT:
-                hidPad &= ~(1 << GAMEPAD_BUTTON_LEFT_OFFSET);
+                hidPad &= ~(1 << N3DS_BUTTON_LEFT);
                 continue;
             case KEY_INDEX_RIGHT:
-                hidPad &= ~(1 << GAMEPAD_BUTTON_RIGHT_OFFSET);
+                hidPad &= ~(1 << N3DS_BUTTON_RIGHT);
+                continue;
+            case KEY_INDEX_HOME:
+                interfaceButtons |= 1 << N3DS_BUTTON_HOME;
+                continue;
+            case KEY_INDEX_R3:
+                interfaceButtons |= 1 << N3DS_BUTTON_POWER;
                 continue;
             default:
                 continue;
@@ -244,9 +240,10 @@ char* generateFrame(char* buffer, size_t size) {
     u32 circlePadState = 0;
     u32 cppState = 0;
     u32 interfaceButtons = 0;
-    generateKeysCode(&hidPad,
-                     &circlePadState,
-                     &cppState
+    generateKeysCode(hidPad,
+                     circlePadState,
+                     cppState,
+                     interfaceButtons
                      );
     memset(buffer, 0, 20);
     memcpy(buffer, &hidPad, 4);
@@ -310,11 +307,35 @@ void handleKeyEvent(GameActivityKeyEvent* keyEvent)
             case GAMEPAD_BUTTON_Y:
                 gKeysState[KEY_INDEX_Y] = keyEvent->action == AKEY_EVENT_ACTION_DOWN?KEY_STATE_DOWN:KEY_STATE_UP;
                 break;
+            case GAMEPAD_BUTTON_HOME:
+                gKeysState[KEY_INDEX_HOME] = keyEvent->action == AKEY_EVENT_ACTION_DOWN?KEY_STATE_DOWN:KEY_STATE_UP;
+                break;
+            case GAMEPAD_BUTTON_R3:
+                gKeysState[KEY_INDEX_R3] = keyEvent->action == AKEY_EVENT_ACTION_DOWN?KEY_STATE_DOWN:KEY_STATE_UP;
+                break;
+            default:
+                break;
+        }
+        //Support left Joy-con
+        switch(keyEvent->scanCode)
+        {
+            case GAMEPAD_BUTTON_JCL_RIGHT:
+                gKeysState[KEY_INDEX_RIGHT] = keyEvent->action == AKEY_EVENT_ACTION_DOWN?KEY_STATE_DOWN:KEY_STATE_UP;
+                break;
+            case GAMEPAD_BUTTON_JCL_LEFT:
+                gKeysState[KEY_INDEX_LEFT] = keyEvent->action == AKEY_EVENT_ACTION_DOWN?KEY_STATE_DOWN:KEY_STATE_UP;
+                break;
+            case GAMEPAD_BUTTON_JCL_Down:
+                gKeysState[KEY_INDEX_DOWN] = keyEvent->action == AKEY_EVENT_ACTION_DOWN?KEY_STATE_DOWN:KEY_STATE_UP;
+                break;
+            case GAMEPAD_BUTTON_JCL_UP:
+                gKeysState[KEY_INDEX_UP] = keyEvent->action == AKEY_EVENT_ACTION_DOWN?KEY_STATE_DOWN:KEY_STATE_UP;
+                break;
             default:
                 break;
         }
     }
-    LOGI("Key %s code=%d action=%s",
+    LOGI("keysource = %d, scanCode = %d,  Key %s code=%d action=%s", keyEvent->source,keyEvent->scanCode,
          (keyEvent->action == AKEY_EVENT_ACTION_DOWN) ? "↓" : "↑",
          keyEvent->keyCode,
          (keyEvent->action == AKEY_EVENT_ACTION_DOWN) ? "DOWN" : "UP");
@@ -347,6 +368,14 @@ void handleMotionEvent(GameActivityMotionEvent* motionEvent)
                                                                        AMOTION_EVENT_AXIS_BRAKE) * 1000);
         int rt = static_cast<int>(GameActivityPointerAxes_getAxisValue(&motionEvent->pointers[0],
                                                                        AMOTION_EVENT_AXIS_GAS) * 1000);
+        if(static_cast<int>(gJoystick[JOYSTICK_R].x * 1000) == 0
+            &&  static_cast<int>(gJoystick[JOYSTICK_R].y * 1000) == 0)
+        {
+            gJoystick[JOYSTICK_R].x = GameActivityPointerAxes_getAxisValue(&motionEvent->pointers[0],
+                                                                           AMOTION_EVENT_AXIS_RX);
+            gJoystick[JOYSTICK_R].y = -GameActivityPointerAxes_getAxisValue(&motionEvent->pointers[0],
+                                                                            AMOTION_EVENT_AXIS_RY) * yAxisMultiplier;
+        }
 
         LOGI("Stick LX=%.3f LY=%.3f RX=%.3f RY=%.3f LLR=%d LUD=%d LT=%d RT=%d",
              gJoystick[JOYSTICK_L].x, gJoystick[JOYSTICK_L].y,
