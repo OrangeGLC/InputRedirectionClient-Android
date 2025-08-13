@@ -24,18 +24,19 @@ public class MainActivity extends GameActivity {
     private EditText et_ip;
     private Button bt_save;
     private Button bt_offScr;
+    public native void initNative(String path);
+    public native void cleanNative();
     public native String saveIPAddress(String input);
-    public native String getSavedIPAddress(String inPath);
+    public native String getCfgIP();
     public native void handleKeyEvent(int keyCode, int action, int source);
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
-
+    public void updateUI()
+    {
+        runOnUiThread(()->
+        {
+                setContentView(R.layout.activity_main);
         //Read IP from config file
-        File inPath = getFilesDir();
         et_ip = findViewById(R.id.et_ip);
-        et_ip.setText(getSavedIPAddress(inPath.getAbsolutePath()));
+        et_ip.setText(getCfgIP());
 
         bt_save = findViewById(R.id.bt_save);
         bt_offScr = findViewById(R.id.bt_offScr);
@@ -51,16 +52,30 @@ public class MainActivity extends GameActivity {
             @Override
             public void onClick(View v) {
                 String input = et_ip.getText().toString();
-                if(!isValidIP(input))
-                {
+                if (!isValidIP(input)) {
                     showErrorDialog();
                     return;
                 }
                 hideKeyboard(MainActivity.this);
                 //Save to file by ndk API
-                Toast.makeText(MainActivity.this, saveIPAddress(input),Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this, saveIPAddress(input), Toast.LENGTH_SHORT).show();
             }
         });
+        });
+    }
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        //Read IP from config file
+        File inPath = getFilesDir();
+        initNative(inPath.getAbsolutePath());
+    }
+
+    @Override
+    protected void onDestroy()
+    {
+        super.onDestroy();
     }
 
     public static boolean isValidIP(String ip) {

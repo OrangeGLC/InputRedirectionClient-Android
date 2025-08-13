@@ -5,8 +5,9 @@ project("inputredirectionclient_android")
 # Creates your game shared library. The name must be the same as the
 # one used for loading in your Kotlin/Java or AndroidManifest.txt files.
 add_library(inputredirectionclient_android SHARED
+        JNIAdapt.cpp
         main.cpp
-        AndroidOut.cpp
+        Transmitter.cpp
 )
 
 # Searches for a package provided by the game activity dependency

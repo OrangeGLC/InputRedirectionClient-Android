@@ -2,37 +2,19 @@
 #define ANDROIDGLINVESTIGATIONS_ANDROIDOUT_H
 
 #include <android/log.h>
-#include <sstream>
 
-/*!
- * Use this to log strings out to logcat. Note that you should use std::endl to commit the line
- *
- * ex:
- *  aout << "Hello World" << std::endl;
- */
-extern std::ostream aout;
+#ifdef DEBUG
+#define ALOGD(...) __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, __VA_ARGS__)
+#else
+#define ALOGD(...)
+#endif
 
-/*!
- * Use this class to create an output stream that writes to logcat. By default, a global one is
- * defined as @a aout
- */
-class AndroidOut: public std::stringbuf {
-public:
-    /*!
-     * Creates a new output stream for logcat
-     * @param kLogTag the log tag to output
-     */
-    inline AndroidOut(const char* kLogTag) : logTag_(kLogTag){}
-
-protected:
-    virtual int sync() override {
-        __android_log_print(ANDROID_LOG_DEBUG, logTag_, "%s", str().c_str());
-        str("");
-        return 0;
-    }
-
-private:
-    const char* logTag_;
-};
+#define ALOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
+#define ALOGW(...) __android_log_print(ANDROID_LOG_WARN, LOG_TAG, __VA_ARGS__)
+#define ALOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
+#define ALOGF(...) do{ \
+            __android_log_print(ANDROID_LOG_FATAL, LOG_TAG, __VA_ARGS__); \
+            abort();           \
+        }while(0)
 
 #endif //ANDROIDGLINVESTIGATIONS_ANDROIDOUT_H
