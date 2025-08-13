@@ -172,6 +172,10 @@ void Transmitter::SetDefaultKeyMapValue()
                 mCfg.gamepadCfg.keyMapCfg[i].outKeyIndex = N3DS_KEY_INDEX_HOME;
                 mCfg.gamepadCfg.keyMapCfg[i].multTrigger = MULT_TRIGGER_NOT_SUPPORT;
                 break;
+            case INPUT_KEY_INDEX_SCRSHOT:
+                mCfg.gamepadCfg.keyMapCfg[i].outKeyIndex = N3DS_KEY_INDEX_HOME;
+                mCfg.gamepadCfg.keyMapCfg[i].multTrigger = MULT_TRIGGER_NOT_SUPPORT;
+                break;
             case INPUT_KEY_INDEX_JCL_UP:
                 mCfg.gamepadCfg.keyMapCfg[i].outKeyIndex = N3DS_KEY_INDEX_UP;
                 mCfg.gamepadCfg.keyMapCfg[i].multTrigger = MULT_TRIGGER_DISABLE;
