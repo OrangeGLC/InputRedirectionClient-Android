@@ -14,24 +14,30 @@
     AxisValue offset[JOYSTICK_INVALID];
 }StickCalibratCfg; */
 
-typedef enum MULT_TRIGGER_TYPE
+typedef enum TURBO_STATE
 {
-    MULT_TRIGGER_DISABLE = 0,
-    MULT_TRIGGER_ENABLE,
-    MULT_TRIGGER_NOT_SUPPORT,
-}MULT_TRIGGER_TYPE;
+    TURBO_DISABLE = 0,
+    TURBO_ENABLE,
+    TURBO_NOT_SUPPORT,
+}TURBO_STATE;
 
 typedef struct KeyMapCfg
 {
     N3DS_KEY_INDEX outKeyIndex;
-    MULT_TRIGGER_TYPE multTrigger;
+    TURBO_STATE turbo;
 }KeyMapCfg;
 
+/* NOTE: REMEMBER to set default value in
+ * Transmiter::SetDefaultConfigValue
+ * */
 typedef struct GamepadCfg
 {
     float deadZone[MAX_JOYSTICK_INDEX];
     bool invertAB;
     bool invertXY;
+    bool mapHome;
+    bool mapPower;
+    bool mapShut;
     KeyMapCfg  keyMapCfg[MAX_INPUT_KEY_INDEX];
     //StickCalibratCfg stkCalibratCfg;
 }GamepadCfg;
@@ -39,7 +45,7 @@ typedef struct GamepadCfg
 typedef struct Config
 {
     u32 cfgSize;
-    bool isFirstRun; /* Must as second item */
+    bool isFirstRun; /* Must as second item because of function Transmiter::LoadConfig */
     std::string ip;
     GamepadCfg gamepadCfg;
 }Config;

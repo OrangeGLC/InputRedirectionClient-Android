@@ -1,7 +1,5 @@
 #include <game-activity/GameActivity.cpp>
 #include <game-text-input/gametextinput.cpp>
-#include "Gamepad.h"
-#include "AndroidOut.h"
 #include "Transmitter.h"
 #include "JNIAdapt.h"
 
@@ -20,8 +18,10 @@ bool motion_event_filter_func(const GameActivityMotionEvent *motionEvent) {
             sourceClass == AINPUT_SOURCE_CLASS_JOYSTICK);
 }
 
-bool key_event_filter_func(const GameActivityKeyEvent *keynEvent) {
-   return true;
+bool key_event_filter_func(const GameActivityKeyEvent *keynEvent)
+{
+    (void)keynEvent;
+    return true;
 }
 
 /*!
@@ -33,7 +33,7 @@ void android_main(struct android_app *pApp) {
 
     android_app_set_motion_event_filter(pApp, motion_event_filter_func);
     android_app_set_key_event_filter(pApp, key_event_filter_func);
-    while(1)
+    while(true)
     {
         std::lock_guard<std::mutex> lock(mutexCfgPathReady);
         if(gCfgPathReady)

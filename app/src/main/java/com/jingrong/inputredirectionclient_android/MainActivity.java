@@ -3,13 +3,17 @@ package com.jingrong.inputredirectionclient_android;
 import android.app.Activity;
 import android.content.Context;
 import android.os.Bundle;
+import android.text.InputType;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
+import android.widget.CompoundButton;
 import android.widget.EditText;
+import android.widget.Switch;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 
 import com.google.androidgamesdk.GameActivity;
@@ -20,47 +24,43 @@ public class MainActivity extends GameActivity {
     static {
         System.loadLibrary("inputredirectionclient_android");
     }
-
-    private EditText et_ip;
-    private Button bt_save;
-    private Button bt_offScr;
     public native void initNative(String path);
     public native void cleanNative();
     public native String saveIPAddress(String input);
     public native String getCfgIP();
     public native void handleKeyEvent(int keyCode, int action, int source);
+    public native void setInvertAB(boolean flg);
+    public native boolean getInvertAB();
+    public native void setInvertXY(boolean flg);
+    public native boolean getInvertXY();
+    public native void setTurbo(int index, boolean flg);
+    public native boolean getTurbo(int index);
+    public native void setHomeMapEnable(boolean flg);
+    public native boolean getHomeMapEnable();
+    public native void setPowerMapEnable(boolean flg);
+    public native boolean getPowerMapEnable();
+    public native void setPowerOffMapEnable(boolean flg);
+    public native boolean getPowerOffMapEnable();
     public void updateUI()
     {
-        runOnUiThread(()->
-        {
-                setContentView(R.layout.activity_main);
-        //Read IP from config file
-        et_ip = findViewById(R.id.et_ip);
-        et_ip.setText(getCfgIP());
-
-        bt_save = findViewById(R.id.bt_save);
-        bt_offScr = findViewById(R.id.bt_offScr);
-        et_ip.setOnKeyListener(new View.OnKeyListener() {
-            @Override
-            public boolean onKey(View view, int i, KeyEvent keyEvent) {
-                handleKeyEvent(keyEvent.getKeyCode(), keyEvent.getAction(), keyEvent.getSource());
-                return false;
-            }
-        });
-        //Check the validity of the IP address.
-        bt_save.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                String input = et_ip.getText().toString();
-                if (!isValidIP(input)) {
-                    showErrorDialog();
-                    return;
-                }
-                hideKeyboard(MainActivity.this);
-                //Save to file by ndk API
-                Toast.makeText(MainActivity.this, saveIPAddress(input), Toast.LENGTH_SHORT).show();
-            }
-        });
+        runOnUiThread(()-> {
+            etIP.setText(getCfgIP());
+            swInvertAB.setChecked(getInvertAB());
+            swInvertXY.setChecked(getInvertXY());
+            swTurboA.setChecked(getTurbo(0));
+            swTurboB.setChecked(getTurbo(1));
+            swTurboX.setChecked(getTurbo(2));
+            swTurboY.setChecked(getTurbo(3));
+            swTurboL.setChecked(getTurbo(6));
+            swTurboR.setChecked(getTurbo(7));
+            swTurboZL.setChecked(getTurbo(8));
+            swTurboZR.setChecked(getTurbo(9));
+            swHomeMap.setChecked(getHomeMapEnable());
+            swPowerMap.setChecked(getPowerMapEnable());
+            swPowerOffMap.setChecked(getPowerOffMapEnable());
+            etHome.setEnabled(getHomeMapEnable());
+            etPower.setEnabled(getPowerMapEnable());
+            etPowerOff.setEnabled(getPowerOffMapEnable());
         });
     }
 
@@ -70,6 +70,163 @@ public class MainActivity extends GameActivity {
         //Read IP from config file
         File inPath = getFilesDir();
         initNative(inPath.getAbsolutePath());
+        setContentView(R.layout.activity_main);
+
+        etIP = findViewById(R.id.et_ip);
+        btSaveIP = findViewById(R.id.bt_save);
+        swInvertAB = findViewById(R.id.switch_invertAB);
+        swInvertXY = findViewById(R.id.switch_invertXY);
+        swTurboA = findViewById(R.id.switch_turbo_A);
+        swTurboB = findViewById(R.id.switch_turbo_B);
+        swTurboX = findViewById(R.id.switch_turbo_X);
+        swTurboY = findViewById(R.id.switch_turbo_Y);
+        swTurboR = findViewById(R.id.switch_turbo_R);
+        swTurboL = findViewById(R.id.switch_turbo_L);
+        swTurboZR = findViewById(R.id.switch_turbo_ZR);
+        swTurboZL = findViewById(R.id.switch_turbo_ZL);
+        swHomeMap = findViewById(R.id.switch_home);
+        swPowerMap = findViewById(R.id.switch_power);
+        swPowerOffMap = findViewById(R.id.switch_shut);
+        etHome = findViewById(R.id.et_home);
+        etPower = findViewById(R.id.et_power);
+        etPowerOff = findViewById(R.id.et_shut);
+
+        etIP.setOnKeyListener(new View.OnKeyListener() {
+            @Override
+            public boolean onKey(View view, int i, KeyEvent keyEvent) {
+                handleKeyEvent(keyEvent.getKeyCode(), keyEvent.getAction(), keyEvent.getSource());
+                return false;
+            }
+        });
+
+        btSaveIP.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                String input = etIP.getText().toString();
+                if (!isValidIP(input)) {
+                    showErrorDialog();
+                    return;
+                }
+                hideKeyboard(MainActivity.this);
+                //Save to file by ndk API
+                Toast.makeText(MainActivity.this, saveIPAddress(input), Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        swInvertAB.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(@NonNull CompoundButton compoundButton, boolean b) {
+                setInvertAB(b);
+            }
+        });
+
+        swInvertXY.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(@NonNull CompoundButton compoundButton, boolean b) {
+                setInvertXY(b);
+            }
+        });
+
+        swTurboA.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(@NonNull CompoundButton compoundButton, boolean b)
+            {
+                setTurbo(0, b);
+            }
+        });
+
+        swTurboB.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(@NonNull CompoundButton compoundButton, boolean b)
+            {
+                setTurbo(1, b);
+            }
+        });
+
+        swTurboX.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(@NonNull CompoundButton compoundButton, boolean b)
+            {
+                setTurbo(2, b);
+            }
+        });
+
+        swTurboY.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(@NonNull CompoundButton compoundButton, boolean b)
+            {
+                setTurbo(3, b);
+            }
+        });
+
+        swTurboL.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(@NonNull CompoundButton compoundButton, boolean b)
+            {
+                setTurbo(6, b);
+            }
+        });
+
+        swTurboR.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(@NonNull CompoundButton compoundButton, boolean b)
+            {
+                setTurbo(7, b);
+            }
+        });
+
+        swTurboZL.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(@NonNull CompoundButton compoundButton, boolean b)
+            {
+                setTurbo(8, b);
+            }
+        });
+
+        swTurboZR.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(@NonNull CompoundButton compoundButton, boolean b)
+            {
+                setTurbo(9, b);
+            }
+        });
+
+        swHomeMap.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(@NonNull CompoundButton compoundButton, boolean b) {
+                setHomeMapEnable(b);
+                etHome.setEnabled(b);
+            }
+        });
+
+        swPowerMap.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(@NonNull CompoundButton compoundButton, boolean b) {
+                setPowerMapEnable(b);
+                etPower.setEnabled(b);
+            }
+        });
+
+        swPowerOffMap.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(@NonNull CompoundButton compoundButton, boolean b) {
+                setPowerOffMapEnable(b);
+                etPowerOff.setEnabled(b);
+            }
+        });
+
+        etHome.setInputType(InputType.TYPE_NULL);
+        etHome.setFocusable(false);
+        etHome.setClickable(false);
+
+        etPower.setInputType(InputType.TYPE_NULL);
+        etPower.setFocusable(false);
+        etPower.setClickable(false);
+
+
+        etPowerOff.setInputType(InputType.TYPE_NULL);
+        etPowerOff.setFocusable(false);
+        etPowerOff.setClickable(false);
     }
 
     @Override
@@ -96,7 +253,7 @@ public class MainActivity extends GameActivity {
     private void showErrorDialog() {
         new AlertDialog.Builder(this)
                 .setTitle("Error: Invalid IP Address.")
-                .setMessage("Correct IP address consists of numbers and periods, for example, 192.168.10.20")
+                .setMessage("A valid IP address consists of numbers less than 255 separated by dots, e.g. 192.168.10.20")
                 .setPositiveButton("Close", null)
                 .show();
     }
@@ -110,4 +267,23 @@ public class MainActivity extends GameActivity {
             }
         }
     }
+    private EditText etIP;
+    private Button btSaveIP;
+    private Button btOffScr;
+    private Switch swInvertAB;
+    private Switch swInvertXY;
+    private Switch swTurboA;
+    private Switch swTurboB;
+    private Switch swTurboX;
+    private Switch swTurboY;
+    private Switch swTurboR;
+    private Switch swTurboL;
+    private Switch swTurboZL;
+    private Switch swTurboZR;
+    private Switch swHomeMap;
+    private Switch swPowerMap;
+    private Switch swPowerOffMap;
+    private EditText etHome;
+    private EditText etPower;
+    private EditText etPowerOff;
 }

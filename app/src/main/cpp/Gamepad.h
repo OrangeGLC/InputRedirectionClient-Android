@@ -1,5 +1,5 @@
 //
-// Created by OrangelGLC on 2025/8/6.
+// Created by 荆荣 on 2025/8/6.
 //
 
 #ifndef INPUTREDIRECTIONCLIENT_ANDROID_GAMEPAD_H
@@ -50,7 +50,8 @@
 #define N3DS_BUTTON_X           (10)
 #define N3DS_BUTTON_Y           (11)
 #define N3DS_BUTTON_HOME        (0)
-#define N3DS_BUTTON_POWER       (2)
+#define N3DS_BUTTON_POWER       (1)
+#define N3DS_BUTTON_SHUTDOWN    (2)
 
 typedef unsigned int  u32;
 
@@ -96,6 +97,7 @@ typedef enum N3DS_KEY_INDEX
     N3DS_KEY_INDEX_DOWN,
     N3DS_KEY_INDEX_LEFT,
     N3DS_KEY_INDEX_RIGHT,
+    N3DS_KEY_INDEX_SHUTDOWN,
     N3DS_KEY_INDEX_INVALID, //Must keep this index as the last one.
 }N3DS_KEY_INDEX;
 
@@ -118,6 +120,7 @@ const N3dsKeyInfo gN3DsKeyTab[MAX_N3DS_KEY_INDEX] =
 /* N3DS_KEY_INDEX_DOWN */{"DOWN", N3DS_BUTTON_DOWN, FIRST},
 /* N3DS_KEY_INDEX_LEFT */{"LEFT", N3DS_BUTTON_LEFT, FIRST},
 /* N3DS_KEY_INDEX_RIGHT */{"RIGHT", N3DS_BUTTON_RIGHT, FIRST},
+/* N3DS_KEY_INDEX_SHUTDOWN */{"POWEROFF", N3DS_BUTTON_SHUTDOWN, FIFTH},
 };
 
 typedef enum INPUT_KEY_INDEX

@@ -122,3 +122,110 @@ Java_com_jingrong_inputredirectionclient_1android_MainActivity_cleanNative(JNIEn
                                                                            jobject thiz)
 {
 }
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_jingrong_inputredirectionclient_1android_MainActivity_setInvertAB(JNIEnv *env,
+                                                                           jobject thiz,
+                                                                           jboolean flg)
+{
+    Transmitter::GetInstance()->SetInvertAB(flg);
+    Transmitter::GetInstance()->SaveConfig();
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_jingrong_inputredirectionclient_1android_MainActivity_setInvertXY(JNIEnv *env,
+                                                                           jobject thiz,
+                                                                           jboolean flg)
+{
+    Transmitter::GetInstance()->SetInvertXY(flg);
+    Transmitter::GetInstance()->SaveConfig();
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_jingrong_inputredirectionclient_1android_MainActivity_setTurbo(JNIEnv *env, jobject thiz,
+                                                                        jint index, jboolean flg)
+{
+    Transmitter::GetInstance()->SetTurbo(static_cast<INPUT_KEY_INDEX>(index),flg);
+    Transmitter::GetInstance()->SaveConfig();
+}
+
+extern "C"
+JNIEXPORT jboolean JNICALL
+Java_com_jingrong_inputredirectionclient_1android_MainActivity_getInvertAB(JNIEnv *env,
+                                                                           jobject thiz)
+{
+    return Transmitter::GetInstance()->GetInvertAB();
+}
+
+extern "C"
+JNIEXPORT jboolean JNICALL
+Java_com_jingrong_inputredirectionclient_1android_MainActivity_getInvertXY(JNIEnv *env,
+                                                                           jobject thiz)
+{
+    return Transmitter::GetInstance()->GetInvertXY();
+}
+
+extern "C"
+JNIEXPORT jboolean JNICALL
+Java_com_jingrong_inputredirectionclient_1android_MainActivity_getTurbo(JNIEnv *env, jobject thiz,
+                                                                        jint index)
+{
+    return Transmitter::GetInstance()->GetTurbo(static_cast<INPUT_KEY_INDEX>(index));
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_jingrong_inputredirectionclient_1android_MainActivity_setHomeMapEnable(JNIEnv *env,
+                                                                                jobject thiz,
+                                                                                jboolean flg)
+{
+    Transmitter::GetInstance()->SetHomeMap(flg);
+    Transmitter::GetInstance()->SaveConfig();
+}
+
+extern "C"
+JNIEXPORT jboolean JNICALL
+Java_com_jingrong_inputredirectionclient_1android_MainActivity_getHomeMapEnable(JNIEnv *env,
+                                                                                jobject thiz)
+{
+   return Transmitter::GetInstance()->GetHomeMap();
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_jingrong_inputredirectionclient_1android_MainActivity_setPowerMapEnable(JNIEnv *env,
+                                                                                 jobject thiz,
+                                                                                 jboolean flg)
+{
+    Transmitter::GetInstance()->SetPowerMap(flg);
+    Transmitter::GetInstance()->SaveConfig();
+}
+
+extern "C"
+JNIEXPORT jboolean JNICALL
+Java_com_jingrong_inputredirectionclient_1android_MainActivity_getPowerMapEnable(JNIEnv *env,
+                                                                                 jobject thiz)
+{
+    return Transmitter::GetInstance()->GetPowerMap();
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_jingrong_inputredirectionclient_1android_MainActivity_setPowerOffMapEnable(JNIEnv *env,
+                                                                                    jobject thiz,
+                                                                                    jboolean flg)
+{
+    Transmitter::GetInstance()->SetPowerOffMap(flg);
+    Transmitter::GetInstance()->SaveConfig();
+}
+
+extern "C"
+JNIEXPORT jboolean JNICALL
+Java_com_jingrong_inputredirectionclient_1android_MainActivity_getPowerOffMapEnable(JNIEnv *env,
+                                                                                    jobject thiz)
+{
+    return Transmitter::GetInstance()->GetPowerOffMap();
+}

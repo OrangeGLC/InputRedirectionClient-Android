@@ -91,6 +91,9 @@ void Transmitter::SetDefaultConfigValue()
     mCfg.gamepadCfg.deadZone[JOYSTICK_R] = 0.05f;
     mCfg.gamepadCfg.invertAB = false;
     mCfg.gamepadCfg.invertXY = false;
+    mCfg.gamepadCfg.mapHome = false;
+    mCfg.gamepadCfg.mapPower = false;
+    mCfg.gamepadCfg.mapShut = false;
     mCfg.isFirstRun = true;
     SetDefaultKeyMapValue();
 }
@@ -102,95 +105,95 @@ void Transmitter::SetDefaultKeyMapValue()
         {
             case INPUT_KEY_INDEX_A:
                 mCfg.gamepadCfg.keyMapCfg[i].outKeyIndex = N3DS_KEY_INDEX_A;
-                mCfg.gamepadCfg.keyMapCfg[i].multTrigger = MULT_TRIGGER_DISABLE;
+                mCfg.gamepadCfg.keyMapCfg[i].turbo = TURBO_DISABLE;
                 break;
             case INPUT_KEY_INDEX_B:
                 mCfg.gamepadCfg.keyMapCfg[i].outKeyIndex = N3DS_KEY_INDEX_B;
-                mCfg.gamepadCfg.keyMapCfg[i].multTrigger = MULT_TRIGGER_DISABLE;
+                mCfg.gamepadCfg.keyMapCfg[i].turbo = TURBO_DISABLE;
                 break;
             case INPUT_KEY_INDEX_X:
                 mCfg.gamepadCfg.keyMapCfg[i].outKeyIndex = N3DS_KEY_INDEX_X;
-                mCfg.gamepadCfg.keyMapCfg[i].multTrigger = MULT_TRIGGER_DISABLE;
+                mCfg.gamepadCfg.keyMapCfg[i].turbo = TURBO_DISABLE;
                 break;
             case INPUT_KEY_INDEX_Y:
                 mCfg.gamepadCfg.keyMapCfg[i].outKeyIndex = N3DS_KEY_INDEX_Y;
-                mCfg.gamepadCfg.keyMapCfg[i].multTrigger = MULT_TRIGGER_DISABLE;
+                mCfg.gamepadCfg.keyMapCfg[i].turbo = TURBO_DISABLE;
                 break;
             case INPUT_KEY_INDEX_RB:
                 mCfg.gamepadCfg.keyMapCfg[i].outKeyIndex = N3DS_KEY_INDEX_R;
-                mCfg.gamepadCfg.keyMapCfg[i].multTrigger = MULT_TRIGGER_DISABLE;
+                mCfg.gamepadCfg.keyMapCfg[i].turbo = TURBO_DISABLE;
                 break;
             case INPUT_KEY_INDEX_LB:
                 mCfg.gamepadCfg.keyMapCfg[i].outKeyIndex = N3DS_KEY_INDEX_L;
-                mCfg.gamepadCfg.keyMapCfg[i].multTrigger = MULT_TRIGGER_DISABLE;
+                mCfg.gamepadCfg.keyMapCfg[i].turbo = TURBO_DISABLE;
                 break;
             case INPUT_KEY_INDEX_RT:
                 mCfg.gamepadCfg.keyMapCfg[i].outKeyIndex = N3DS_KEY_INDEX_ZR;
-                mCfg.gamepadCfg.keyMapCfg[i].multTrigger = MULT_TRIGGER_DISABLE;
+                mCfg.gamepadCfg.keyMapCfg[i].turbo = TURBO_DISABLE;
                 break;
             case INPUT_KEY_INDEX_LT:
                 mCfg.gamepadCfg.keyMapCfg[i].outKeyIndex = N3DS_KEY_INDEX_ZL;
-                mCfg.gamepadCfg.keyMapCfg[i].multTrigger = MULT_TRIGGER_DISABLE;
+                mCfg.gamepadCfg.keyMapCfg[i].turbo = TURBO_DISABLE;
                 break;
             case INPUT_KEY_INDEX_SELECT:
                 mCfg.gamepadCfg.keyMapCfg[i].outKeyIndex = N3DS_KEY_INDEX_SELECT;
-                mCfg.gamepadCfg.keyMapCfg[i].multTrigger = MULT_TRIGGER_NOT_SUPPORT;
+                mCfg.gamepadCfg.keyMapCfg[i].turbo = TURBO_NOT_SUPPORT;
                 break;
             case INPUT_KEY_INDEX_START:
                 mCfg.gamepadCfg.keyMapCfg[i].outKeyIndex = N3DS_KEY_INDEX_START;
-                mCfg.gamepadCfg.keyMapCfg[i].multTrigger = MULT_TRIGGER_NOT_SUPPORT;
+                mCfg.gamepadCfg.keyMapCfg[i].turbo = TURBO_NOT_SUPPORT;
                 break;
             case INPUT_KEY_INDEX_UP:
                 mCfg.gamepadCfg.keyMapCfg[i].outKeyIndex = N3DS_KEY_INDEX_UP;
-                mCfg.gamepadCfg.keyMapCfg[i].multTrigger = MULT_TRIGGER_DISABLE;
+                mCfg.gamepadCfg.keyMapCfg[i].turbo = TURBO_NOT_SUPPORT;
                 break;
             case INPUT_KEY_INDEX_DOWN:
                 mCfg.gamepadCfg.keyMapCfg[i].outKeyIndex = N3DS_KEY_INDEX_DOWN;
-                mCfg.gamepadCfg.keyMapCfg[i].multTrigger = MULT_TRIGGER_DISABLE;
+                mCfg.gamepadCfg.keyMapCfg[i].turbo = TURBO_NOT_SUPPORT;
                 break;
             case INPUT_KEY_INDEX_RIGHT:
                 mCfg.gamepadCfg.keyMapCfg[i].outKeyIndex = N3DS_KEY_INDEX_RIGHT;
-                mCfg.gamepadCfg.keyMapCfg[i].multTrigger = MULT_TRIGGER_DISABLE;
+                mCfg.gamepadCfg.keyMapCfg[i].turbo = TURBO_NOT_SUPPORT;
                 break;
             case INPUT_KEY_INDEX_LEFT:
                 mCfg.gamepadCfg.keyMapCfg[i].outKeyIndex = N3DS_KEY_INDEX_LEFT;
-                mCfg.gamepadCfg.keyMapCfg[i].multTrigger = MULT_TRIGGER_DISABLE;
+                mCfg.gamepadCfg.keyMapCfg[i].turbo = TURBO_NOT_SUPPORT;
                 break;
             case INPUT_KEY_INDEX_R3:
                 mCfg.gamepadCfg.keyMapCfg[i].outKeyIndex = N3DS_KEY_INDEX_R;
-                mCfg.gamepadCfg.keyMapCfg[i].multTrigger = MULT_TRIGGER_DISABLE;
+                mCfg.gamepadCfg.keyMapCfg[i].turbo = TURBO_DISABLE;
                 break;
             case INPUT_KEY_INDEX_L3:
                 mCfg.gamepadCfg.keyMapCfg[i].outKeyIndex = N3DS_KEY_INDEX_L;
-                mCfg.gamepadCfg.keyMapCfg[i].multTrigger = MULT_TRIGGER_DISABLE;
+                mCfg.gamepadCfg.keyMapCfg[i].turbo = TURBO_DISABLE;
                 break;
             case INPUT_KEY_INDEX_HOME:
                 mCfg.gamepadCfg.keyMapCfg[i].outKeyIndex = N3DS_KEY_INDEX_HOME;
-                mCfg.gamepadCfg.keyMapCfg[i].multTrigger = MULT_TRIGGER_NOT_SUPPORT;
+                mCfg.gamepadCfg.keyMapCfg[i].turbo = TURBO_NOT_SUPPORT;
                 break;
             case INPUT_KEY_INDEX_SHARE:
-                mCfg.gamepadCfg.keyMapCfg[i].outKeyIndex = N3DS_KEY_INDEX_HOME;
-                mCfg.gamepadCfg.keyMapCfg[i].multTrigger = MULT_TRIGGER_NOT_SUPPORT;
+                mCfg.gamepadCfg.keyMapCfg[i].outKeyIndex = N3DS_KEY_INDEX_POWER;
+                mCfg.gamepadCfg.keyMapCfg[i].turbo = TURBO_NOT_SUPPORT;
                 break;
             case INPUT_KEY_INDEX_SCRSHOT:
-                mCfg.gamepadCfg.keyMapCfg[i].outKeyIndex = N3DS_KEY_INDEX_HOME;
-                mCfg.gamepadCfg.keyMapCfg[i].multTrigger = MULT_TRIGGER_NOT_SUPPORT;
+                mCfg.gamepadCfg.keyMapCfg[i].outKeyIndex = N3DS_KEY_INDEX_POWER;
+                mCfg.gamepadCfg.keyMapCfg[i].turbo = TURBO_NOT_SUPPORT;
                 break;
             case INPUT_KEY_INDEX_JCL_UP:
                 mCfg.gamepadCfg.keyMapCfg[i].outKeyIndex = N3DS_KEY_INDEX_UP;
-                mCfg.gamepadCfg.keyMapCfg[i].multTrigger = MULT_TRIGGER_DISABLE;
+                mCfg.gamepadCfg.keyMapCfg[i].turbo = TURBO_NOT_SUPPORT;
                 break;
             case INPUT_KEY_INDEX_JCL_DOWN:
                 mCfg.gamepadCfg.keyMapCfg[i].outKeyIndex = N3DS_KEY_INDEX_DOWN;
-                mCfg.gamepadCfg.keyMapCfg[i].multTrigger = MULT_TRIGGER_DISABLE;
+                mCfg.gamepadCfg.keyMapCfg[i].turbo = TURBO_NOT_SUPPORT;
                 break;
             case INPUT_KEY_INDEX_JCL_LEFT:
                 mCfg.gamepadCfg.keyMapCfg[i].outKeyIndex = N3DS_KEY_INDEX_LEFT;
-                mCfg.gamepadCfg.keyMapCfg[i].multTrigger = MULT_TRIGGER_DISABLE;
+                mCfg.gamepadCfg.keyMapCfg[i].turbo = TURBO_NOT_SUPPORT;
                 break;
             case INPUT_KEY_INDEX_JCL_RIGHT:
                 mCfg.gamepadCfg.keyMapCfg[i].outKeyIndex = N3DS_KEY_INDEX_RIGHT;
-                mCfg.gamepadCfg.keyMapCfg[i].multTrigger = MULT_TRIGGER_DISABLE;
+                mCfg.gamepadCfg.keyMapCfg[i].turbo = TURBO_NOT_SUPPORT;
                 break;
             default:
                 ALOGE("Invalid index %d", i);
@@ -304,8 +307,13 @@ void Transmitter::GenerateFrame()
     mFrameData.irButtonsState = 0;
     mFrameData.interfaceButtons = 0;
     mFrameData.touchScreenState = 0x2000000;
-
-    KeyEventToFrameData();
+    bool turbo = NeedTurbo();
+    if(turbo)
+    {
+        if(mTurboMark) KeyEventToFrameData();
+    }
+    else
+        KeyEventToFrameData();
     MotionEventToFrameData();
 
     memset(mFrameBuffer, 0, 20);
@@ -314,6 +322,8 @@ void Transmitter::GenerateFrame()
     memcpy(mFrameBuffer + 8, &mFrameData.circlePadState, 4);
     memcpy(mFrameBuffer + 12, &mFrameData.cppState, 4);
     memcpy(mFrameBuffer + 16, &mFrameData.interfaceButtons, 4);
+    if(turbo)
+        mTurboMark = !mTurboMark;
 }
 
 INPUT_KEY_INDEX Transmitter::GetInputKeyIndex(int keyCode)
@@ -336,10 +346,19 @@ void Transmitter::KeyEventToFrameData()
             OutputKeyIndexToFrameData(outIndex);
         }
     }
+    /* Check if need power off (L3 + R3 press down meanwhile) */
+    if(mKeysState[INPUT_KEY_INDEX_L3] == KEY_STATE_DOWN &&
+        mKeysState[INPUT_KEY_INDEX_R3] == KEY_STATE_DOWN &&
+        mCfg.gamepadCfg.mapShut )
+        OutputKeyIndexToFrameData(N3DS_KEY_INDEX_SHUTDOWN);
 }
 
 void Transmitter::OutputKeyIndexToFrameData(N3DS_KEY_INDEX outIndex)
 {
+    if(outIndex == N3DS_KEY_INDEX_POWER && !mCfg.gamepadCfg.mapPower) return;
+
+    if(outIndex == N3DS_KEY_INDEX_HOME && !mCfg.gamepadCfg.mapHome) return;
+
     switch(gN3DsKeyTab[outIndex].obj)
     {
         case FIRST:
@@ -540,8 +559,6 @@ Transmitter::RetVal Transmitter::GetCfgIP(char *buffer, size_t size)
         ALOGE("buffer is nullptr");
         return NOK;
     }
-    std::cout << mCfg.ip <<std::endl;
-    ALOGD("ip length = %d",mCfg.ip.length());
     if(mCfg.ip.length() > size)
     {
         ALOGE("Too small size");
@@ -549,13 +566,113 @@ Transmitter::RetVal Transmitter::GetCfgIP(char *buffer, size_t size)
     }
     memset(buffer, 0, size);
     memcpy(buffer,mCfg.ip.c_str(),mCfg.ip.length());
-    ALOGD("%s: src = %s, dest=%s", __FUNCTION__, mCfg.ip.c_str(), buffer);
     return OK;
 }
 
 void Transmitter::SetCfgIP(std::string ip)
 {
     mCfg.ip = ip;
+}
+
+bool Transmitter::NeedTurbo()
+{
+    for(auto index=0; index<MAX_INPUT_KEY_INDEX; ++index)
+    {
+        if(mCfg.gamepadCfg.keyMapCfg[index].turbo == TURBO_ENABLE && mKeysState[index] == KEY_STATE_DOWN)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+void Transmitter::SetInvertAB(bool flg)
+{
+    mCfg.gamepadCfg.invertAB = flg;
+    if(flg)
+    {
+        mCfg.gamepadCfg.keyMapCfg[INPUT_KEY_INDEX_A].outKeyIndex = N3DS_KEY_INDEX_B;
+        mCfg.gamepadCfg.keyMapCfg[INPUT_KEY_INDEX_B].outKeyIndex = N3DS_KEY_INDEX_A;
+    }
+    else
+    {
+        mCfg.gamepadCfg.keyMapCfg[INPUT_KEY_INDEX_A].outKeyIndex = N3DS_KEY_INDEX_A;
+        mCfg.gamepadCfg.keyMapCfg[INPUT_KEY_INDEX_B].outKeyIndex = N3DS_KEY_INDEX_B;
+    }
+
+}
+
+void Transmitter::SetInvertXY(bool flg)
+{
+    mCfg.gamepadCfg.invertXY = flg;
+    if(flg)
+    {
+        mCfg.gamepadCfg.keyMapCfg[INPUT_KEY_INDEX_X].outKeyIndex = N3DS_KEY_INDEX_Y;
+        mCfg.gamepadCfg.keyMapCfg[INPUT_KEY_INDEX_Y].outKeyIndex = N3DS_KEY_INDEX_X;
+    }
+    else
+    {
+        mCfg.gamepadCfg.keyMapCfg[INPUT_KEY_INDEX_A].outKeyIndex = N3DS_KEY_INDEX_A;
+        mCfg.gamepadCfg.keyMapCfg[INPUT_KEY_INDEX_B].outKeyIndex = N3DS_KEY_INDEX_B;
+    }
+}
+
+bool Transmitter::GetInvertAB()
+{
+    return mCfg.gamepadCfg.invertAB;
+}
+
+bool Transmitter::GetInvertXY()
+{
+    return mCfg.gamepadCfg.invertXY;
+}
+
+void Transmitter::SetTurbo(INPUT_KEY_INDEX index, bool flg)
+{
+    if(mCfg.gamepadCfg.keyMapCfg[index].turbo != TURBO_NOT_SUPPORT)
+    {
+        if(flg)
+            mCfg.gamepadCfg.keyMapCfg[index].turbo = TURBO_ENABLE;
+        else
+            mCfg.gamepadCfg.keyMapCfg[index].turbo = TURBO_DISABLE;
+    }
+}
+
+bool Transmitter::GetTurbo(INPUT_KEY_INDEX index)
+{
+    if(mCfg.gamepadCfg.keyMapCfg[index].turbo == TURBO_ENABLE)
+        return true;
+    return false;
+}
+
+void Transmitter::SetHomeMap(bool flg)
+{
+    mCfg.gamepadCfg.mapHome = flg;
+}
+
+bool Transmitter::GetHomeMap()
+{
+    return mCfg.gamepadCfg.mapHome;
+}
+
+void Transmitter::SetPowerMap(bool flg)
+{
+    mCfg.gamepadCfg.mapPower = flg;
+}
+
+bool Transmitter::GetPowerMap()
+{
+    return mCfg.gamepadCfg.mapPower;
+}
+
+void Transmitter::SetPowerOffMap(bool flg)
+{
+    mCfg.gamepadCfg.mapShut = flg;
+}
+
+bool Transmitter::GetPowerOffMap()
+{
+    return mCfg.gamepadCfg.mapShut;
 }
 
 

@@ -8,7 +8,7 @@
 
 
 #### 使用说明
-1. Android设备与3ds处于同一局域网内，可以使用3ds直接连接Android设备的WI-FI热点。
+1. Android设备与3DS处于同一局域网内，可以使用3DS直接连接Android设备的WI-FI热点。
 2. 手柄连接Android设备。
     `注意：如果你使用的手柄是NS Joy-con，建议在Android设备的蓝牙设置中修改设备名称为“Nintendo”`。
 3. 3DS端打开InputRedirection服务:
@@ -29,6 +29,6 @@
     * 确认3DS连接到WI-FI后重试。
 
 #### 计划新增的功能
-1. A<->B X<->Y按键反转。
-2. ABXY等按键支持连发。
+1. ～～A<->B X<->Y按键反转。～～已支持
+2. ～～ABXY等按键支持连发。～～已支持
 3. 关闭屏幕但不锁屏。

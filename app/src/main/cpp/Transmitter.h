@@ -44,6 +44,19 @@ public:
     void GenerateFrame();
     RetVal GetCfgIP(char *buffer, size_t size);
     void SetCfgIP(std::string ip);
+    bool NeedTurbo();
+    void SetInvertAB(bool flg);
+    bool GetInvertAB();
+    void SetInvertXY(bool flg);
+    bool GetInvertXY();
+    void SetTurbo(INPUT_KEY_INDEX index, bool flg);
+    bool GetTurbo(INPUT_KEY_INDEX index);
+    void SetHomeMap(bool flg);
+    bool GetHomeMap();
+    void SetPowerMap(bool flg);
+    bool GetPowerMap();
+    void SetPowerOffMap(bool flg);
+    bool GetPowerOffMap();
 private:
     Transmitter(struct android_app *app);
     ~Transmitter();
@@ -52,6 +65,7 @@ private:
     const char* mConfigName = "/config.cfg";
     std::string mConfigPath;
     bool mHasFocus, mIsVisible, mHasWindow;
+    bool mTurboMark = false;
     Config mCfg;
     KEY_STATE mKeysState[MAX_INPUT_KEY_INDEX];
     AxisValue mJoystick[MAX_JOYSTICK_INDEX];
