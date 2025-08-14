@@ -612,8 +612,8 @@ void Transmitter::SetInvertXY(bool flg)
     }
     else
     {
-        mCfg.gamepadCfg.keyMapCfg[INPUT_KEY_INDEX_A].outKeyIndex = N3DS_KEY_INDEX_A;
-        mCfg.gamepadCfg.keyMapCfg[INPUT_KEY_INDEX_B].outKeyIndex = N3DS_KEY_INDEX_B;
+        mCfg.gamepadCfg.keyMapCfg[INPUT_KEY_INDEX_X].outKeyIndex = N3DS_KEY_INDEX_X;
+        mCfg.gamepadCfg.keyMapCfg[INPUT_KEY_INDEX_Y].outKeyIndex = N3DS_KEY_INDEX_Y;
     }
 }
 
