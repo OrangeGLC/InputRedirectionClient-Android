@@ -1,35 +1,38 @@
 # InputRedirectionClient-Android
+[中文版](./README.zh_CN.md)
 
-[InputRedirectionClient-Qt](https://github.com/TuxSH/InputRedirectionClient-Qt)项目的Android移植版本。
+Android port of the [InputRedirectionClient-Qt](https://github.com/TuxSH/InputRedirectionClient-Qt) project.
 
-
-#### 运行要求
+#### Requirements
 1. Android 13+
 
+#### Usage
+1. Make sure the Android device and the 3DS are on the same LAN; the 3DS can also connect to the Android device’s Wi-Fi hotspot directly.
+2. Connect a game-pad to the Android device.
+   > **Note**: If you are using NS Joy-Con, it is recommended to rename your Android device to `Nintendo` in the Bluetooth settings.
+3. Start the InputRedirection service on the 3DS:
+    1. Open the Rosalina menu with `L + Select + D-Pad Down`.
+    2. Choose `Miscellaneous options...` and press `A`.
+    3. Select `Start InputRedirection`, press `A`; when `Starting InputRedirection... OK` appears, press `B` to return.  
+       The 3DS IP address will now be shown in the upper-right corner of the bottom screen, remember this IP address.
+4. Launch this app on the Android device, enter the 3DS IP you just noted into the field under `3DS IP`, and tap **Save**.  
+   Now, the connected game-pad should control your 3DS.
+   > **Note**: Game-pad buttons may not map 1-to-1 to the 3DS buttons.
 
-#### 使用说明
-1. Android设备与3DS处于同一局域网内，可以使用3DS直接连接Android设备的WI-FI热点。
-2. 手柄连接Android设备。
-    `注意：如果你使用的手柄是NS Joy-con，建议在Android设备的蓝牙设置中修改设备名称为“Nintendo”`。
-3. 3DS端打开InputRedirection服务:
-    1. 打开Rosalina菜单`L+Select+十字键下`。
-    2. 选择`Miscellaneous options...`, 按`A`进入。
-    3. 选择`Start InputRedirection`, 按`A`启动，显示`Starting InputRedirection... OK`即开启成功，按`B`返回后即可在下屏右上角看到3ds的`IP地址`，记住这个`IP地址`。
-1. Android设备上打开此App，在`3DS IP:`下方的输入栏填写上一步记录的3DS IP地址，并点击保存。现在连接Android设备的手柄应该可以正常操作3DS了。`注意：手柄按键与3DS按键映射可能不一致。`
+#### Known Issues & Fixes
 
-#### 已知问题与解决方案
+1. Cannot run in the background or while the screen is locked.
+    * Due to system limitations, the app only works while in the foreground.  
+      To save power, use the [ScreenOff](https://github.com/WuDi-ZhanShen/ScreenOff/releases/tag/V18) app to turn off the screen without locking the device.
+2. ABXY buttons are mapped incorrectly.
+    * ~~A future update will add A↔B and X↔Y swap options.~~
+    * Enable “Swap A⇌B” or “Swap X⇌Y” in the settings.
+3. First-gen NS Joy-Con responds slowly.
+    * Rename your Android device to `Nintendo` in Bluetooth settings.
+4. 3DS shows `Starting InputRedirection... failed (0xffffffff).`
+    * Make sure your 3DS is connected to Wi-Fi and try again.
 
-1.  无法后台or锁屏运行。
-    * 受系统限制，APP只有前台运行时才能正常工作。如果想省电的话，可以使用 [ScreenOff](https://github.com/WuDi-ZhanShen/ScreenOff/releases/tag/V18) APP来关闭屏幕但不锁屏。
-2.  ABXY按键映射错误。
-    * <del>后续增加AB按键反转和XY按键反转功能。<del>
-    * 开启A⇌B或X⇌Y映射交换
-3.  连接NS1代Joy-con手柄响应迟缓。
-    * 在Android设备的蓝牙设置中修改设备名称为“Nintendo”。
-4.  3DS端打开InputRedirection服务显示`Starting InputRedirection... failed (0xffffffff).`
-    * 确认3DS连接到WI-FI后重试。
-
-#### 计划新增的功能
-1. <del>A<->B X<->Y按键反转。</del> 已支持
-2. <del>ABXY等按键支持连发。</del> 已支持
-3. 关闭屏幕但不锁屏。
+#### Planned Features
+1. ~~A↔B and X↔Y button swap.~~  **Done**
+2. ~~Turbo (rapid-fire) support for ABXY, etc.~~  **Done**
+3. Turn off screen without locking.
