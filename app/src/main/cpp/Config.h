@@ -21,12 +21,6 @@ typedef enum TURBO_STATE
     TURBO_NOT_SUPPORT,
 }TURBO_STATE;
 
-typedef struct KeyMapCfg
-{
-    N3DS_KEY_INDEX outKeyIndex;
-    TURBO_STATE turbo;
-}KeyMapCfg;
-
 /* NOTE: REMEMBER to set default value in
  * Transmiter::SetDefaultConfigValue
  * */
@@ -38,7 +32,8 @@ typedef struct GamepadCfg
     bool mapHome;
     bool mapPower;
     bool mapShut;
-    KeyMapCfg  keyMapCfg[MAX_INPUT_KEY_INDEX];
+    N3DS_KEY_INDEX  targetKeyIndex[MAX_INPUT_KEY_INDEX];
+    TURBO_STATE turbo[MAX_N3DS_KEY_INDEX];
     //StickCalibratCfg stkCalibratCfg;
 }GamepadCfg;
 

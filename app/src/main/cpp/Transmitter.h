@@ -36,7 +36,7 @@ public:
     void HandleMotionEvent(GameActivityMotionEvent* motionEvent);
     void SetDefaultConfigValue();
     void SetDefaultKeyMapValue();
-    N3DS_KEY_INDEX GetOutputKeyIndex(INPUT_KEY_INDEX inKeyIndex);
+    N3DS_KEY_INDEX GetOutputKeyIndex(INPUT_KEY_INDEX inKeyIndex); /* No use yet. */
     INPUT_KEY_INDEX GetInputKeyIndex(int keyCode);
     void KeyEventToFrameData();
     void MotionEventToFrameData();
@@ -44,7 +44,6 @@ public:
     void GenerateFrame();
     RetVal GetCfgIP(char *buffer, size_t size);
     void SetCfgIP(std::string ip);
-    bool NeedTurbo();
     void SetInvertAB(bool flg);
     bool GetInvertAB();
     void SetInvertXY(bool flg);
@@ -65,7 +64,7 @@ private:
     const char* mConfigName = "/config.cfg";
     std::string mConfigPath;
     bool mHasFocus, mIsVisible, mHasWindow;
-    bool mTurboMark = false;
+    bool mTurboMark[MAX_N3DS_KEY_INDEX];
     Config mCfg;
     KEY_STATE mKeysState[MAX_INPUT_KEY_INDEX];
     AxisValue mJoystick[MAX_JOYSTICK_INDEX];
