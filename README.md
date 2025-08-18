@@ -5,6 +5,7 @@ Android port of the [InputRedirectionClient-Qt](https://github.com/TuxSH/InputRe
 
 #### Requirements
 1. Android 13+
+2. 3DS with Luma3DS 8.0+
 
 #### Usage
 1. Make sure the Android device and the 3DS are on the same LAN; the 3DS can also connect to the Android device’s Wi-Fi hotspot directly.

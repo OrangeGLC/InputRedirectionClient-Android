@@ -12,6 +12,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <chrono>
 #include "JNIAdapt.h"
 #include "AndroidOut.h"
 
@@ -322,11 +323,12 @@ void Transmitter::GenerateFrame()
 
 }
 
-INPUT_KEY_INDEX Transmitter::GetInputKeyIndex(int keyCode)
+INPUT_KEY_INDEX Transmitter::GetInputKeyIndex(GameActivityKeyEvent* keyEvent)
 {
     for(auto i=0; i<MAX_INPUT_KEY_INDEX; ++i)
     {
-        if(keyCode == gInputKeyTab[i].keycode)
+        if(keyEvent->keyCode == gInputKeyTab[i].keycode ||
+                keyEvent->scanCode == gInputKeyTab[i].keycode)
             return static_cast<INPUT_KEY_INDEX>(i);
     }
     return INPUT_KEY_INDEX_INVALID;
@@ -351,8 +353,9 @@ void Transmitter::OutputKeyIndexToFrameData(N3DS_KEY_INDEX outIndex)
     if(outIndex == N3DS_KEY_INDEX_POWER && !mCfg.gamepadCfg.mapPower) return;
 
     if(outIndex == N3DS_KEY_INDEX_HOME && !mCfg.gamepadCfg.mapHome) return;
-    if(mTurboMark[outIndex])
+    if(mTurboMark[outIndex] && mCfg.gamepadCfg.turbo[outIndex] == TURBO_ENABLE)
     {
+        ALOGD("Send empty frame");
         mTurboMark[outIndex] = false;
         return;
     }
@@ -371,7 +374,11 @@ void Transmitter::OutputKeyIndexToFrameData(N3DS_KEY_INDEX outIndex)
             break;
     }
     if(mCfg.gamepadCfg.turbo[outIndex] == TURBO_ENABLE)
+    {
+        ALOGD("Send normal frame");
+        mLastTurboTime = clock::now();
         mTurboMark[outIndex] = true;
+    }
 }
 
 void Transmitter::HandleKeyEvent(GameActivityKeyEvent* keyEvent)
@@ -383,27 +390,23 @@ void Transmitter::HandleKeyEvent(GameActivityKeyEvent* keyEvent)
     }
     if (keyEvent->source & AINPUT_SOURCE_GAMEPAD)
     {
-        ALOGD("keysource = %d, KeyScanCode = %d, KeyCode %d action=%s",
+        ALOGD("keyEvent = 0x%p, keysource = %d, KeyScanCode = %d, KeyCode %d action=%s",keyEvent,
               keyEvent->source,
               keyEvent->scanCode,
               keyEvent->keyCode,
              (keyEvent->action == AKEY_EVENT_ACTION_DOWN) ? "DOWN" : "UP");
         /* Get input index by KEYCODE */
-        auto inIndex = GetInputKeyIndex(keyEvent->keyCode);
+        auto inIndex = GetInputKeyIndex(keyEvent);
         if(INPUT_KEY_INDEX_INVALID == inIndex)
         {
-            /* if failed to get input index by  KEYCODE,
-             * then use KEYSCANCODE to try again
-             * */
-            inIndex = GetInputKeyIndex(keyEvent->scanCode);
-        }
-
-        if(INPUT_KEY_INDEX_INVALID == inIndex)
-        {
-            ALOGE("Unknown key event.");
+            ALOGD("Unknown key event.");
             return;
         }
         mKeysState[inIndex] = keyEvent->action == AKEY_EVENT_ACTION_DOWN?KEY_STATE_DOWN:KEY_STATE_UP;
+        if(keyEvent->action != AKEY_EVENT_ACTION_DOWN)
+        {
+            ALOGD("Key up");
+        }
     }
 }
 
@@ -487,14 +490,19 @@ void Transmitter::HandleInputEvent()
     android_input_buffer* inputBuffer = android_app_swap_input_buffers(mApp);
     if(inputBuffer == nullptr)
     {
-        /* No input event arrives, return */
+        /* No input event arrives*/
+        if(NeedTurbo())
+        {
+            GenerateFrame();
+            SendFrame();
+        }
         return;
     }
-
     if (inputBuffer->keyEventsCount != 0)
     {
         for(int i=0; i<inputBuffer->keyEventsCount; ++i)
         {
+            if(IgnoreEvent(&inputBuffer->keyEvents[i])) continue;
             HandleKeyEvent(&inputBuffer->keyEvents[i]);
         }
         android_app_clear_key_events(inputBuffer);
@@ -615,20 +623,20 @@ bool Transmitter::GetInvertXY()
     return mCfg.gamepadCfg.invertXY;
 }
 
-void Transmitter::SetTurbo(INPUT_KEY_INDEX index, bool flg)
+void Transmitter::SetTurbo(N3DS_KEY_INDEX index, bool flg)
 {
-    if(mCfg.gamepadCfg.turbo[mCfg.gamepadCfg.targetKeyIndex[index]] != TURBO_NOT_SUPPORT)
+    if(mCfg.gamepadCfg.turbo[index] != TURBO_NOT_SUPPORT)
     {
         if(flg)
-            mCfg.gamepadCfg.turbo[mCfg.gamepadCfg.targetKeyIndex[index]] = TURBO_ENABLE;
+            mCfg.gamepadCfg.turbo[index] = TURBO_ENABLE;
         else
-            mCfg.gamepadCfg.turbo[mCfg.gamepadCfg.targetKeyIndex[index]] = TURBO_DISABLE;
+            mCfg.gamepadCfg.turbo[index] = TURBO_DISABLE;
     }
 }
 
-bool Transmitter::GetTurbo(INPUT_KEY_INDEX index)
+bool Transmitter::GetTurbo(N3DS_KEY_INDEX index)
 {
-    if(mCfg.gamepadCfg.turbo[mCfg.gamepadCfg.targetKeyIndex[index]] == TURBO_ENABLE)
+    if(mCfg.gamepadCfg.turbo[index] == TURBO_ENABLE)
         return true;
     return false;
 }
@@ -663,5 +671,37 @@ bool Transmitter::GetPowerOffMap()
     return mCfg.gamepadCfg.mapShut;
 }
 
+bool Transmitter::IgnoreEvent(GameActivityKeyEvent *keyEvent)
+{
+    const int blackListLength = sizeof(gScanCodeBlackList)/sizeof(gScanCodeBlackList[0]);
+    for(auto i=0; i<blackListLength; ++i)
+    {
+        if(keyEvent->scanCode == gScanCodeBlackList[i])
+        {
+            ALOGD("Ignore event, scancode = %d", keyEvent->scanCode);
+            return true;
+        }
+    }
+    return false;
+}
 
+bool Transmitter::NeedTurbo()
+{
+    using clock = std::chrono::high_resolution_clock;
+    auto now = clock::now();
 
+    if(std::chrono::duration_cast<std::chrono::milliseconds>(now-mLastTurboTime).count() < 60)
+        return false;
+    for(auto i=0; i<MAX_INPUT_KEY_INDEX; ++i)
+    {
+        if(mKeysState[i] == KEY_STATE_DOWN &&
+            mCfg.gamepadCfg.turbo[mCfg.gamepadCfg.targetKeyIndex[i]] == TURBO_ENABLE)
+        {
+            using clock = std::chrono::high_resolution_clock;
+            mLastTurboTime = clock::now();
+            return true;
+        }
+
+    }
+    return false;
+}

@@ -185,6 +185,11 @@ const InputKeyInfo gInputKeyTab[MAX_INPUT_KEY_INDEX]=
 /* KEY_INDEX_JCL_RIGHT */{"RIGHT", true, GAMEPAD_BUTTON_JCL_RIGHT},
 };
 
+const int32_t gScanCodeBlackList[] =
+{
+    117, /* Triggered by Xbox controller Y */
+};
+
 typedef enum KEY_STATE
 {
     KEY_STATE_UP = 0,

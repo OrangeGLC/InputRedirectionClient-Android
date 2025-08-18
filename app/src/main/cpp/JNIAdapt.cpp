@@ -63,9 +63,8 @@ Java_com_jingrong_inputredirectionclient_1android_MainActivity_handleKeyEvent(JN
     Transmitter* tr = Transmitter::GetInstance();
     if(nullptr!= tr)
     {
-        tr->HandleKeyEvent(&keyEvent);
-        tr->GenerateFrame();
-        tr->SendFrame();
+        if(!tr->IgnoreEvent(&keyEvent))
+            tr->HandleKeyEvent(&keyEvent);
     }
 }
 
@@ -100,14 +99,16 @@ void updateUI()
         return;
     }
     jclass main = env->GetObjectClass(mainActivity);
-    if (env->ExceptionCheck() || main == nullptr) {
-        __android_log_print(ANDROID_LOG_ERROR, "JNI", "获取类失败");
+    if (env->ExceptionCheck() || main == nullptr)
+    {
+        ALOGE("Failed to get mainActivity");
         env->ExceptionClear();
         return;
     }
     jmethodID UIMethod = env->GetMethodID(main, "updateUI", "()V");
-    if (env->ExceptionCheck() || UIMethod == nullptr) {
-        __android_log_print(ANDROID_LOG_ERROR, "JNI", "方法查找失败");
+    if (env->ExceptionCheck() || UIMethod == nullptr)
+    {
+        ALOGE("Failed to find updateUI method");
         env->ExceptionClear();
         env->DeleteLocalRef(main);
         return;
@@ -148,7 +149,7 @@ JNIEXPORT void JNICALL
 Java_com_jingrong_inputredirectionclient_1android_MainActivity_setTurbo(JNIEnv *env, jobject thiz,
                                                                         jint index, jboolean flg)
 {
-    Transmitter::GetInstance()->SetTurbo(static_cast<INPUT_KEY_INDEX>(index),flg);
+    Transmitter::GetInstance()->SetTurbo(static_cast<N3DS_KEY_INDEX>(index),flg);
     Transmitter::GetInstance()->SaveConfig();
 }
 
@@ -173,7 +174,7 @@ JNIEXPORT jboolean JNICALL
 Java_com_jingrong_inputredirectionclient_1android_MainActivity_getTurbo(JNIEnv *env, jobject thiz,
                                                                         jint index)
 {
-    return Transmitter::GetInstance()->GetTurbo(static_cast<INPUT_KEY_INDEX>(index));
+    return Transmitter::GetInstance()->GetTurbo(static_cast<N3DS_KEY_INDEX>(index));
 }
 
 extern "C"

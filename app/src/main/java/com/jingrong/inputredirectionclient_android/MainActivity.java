@@ -51,10 +51,10 @@ public class MainActivity extends GameActivity {
             swTurboB.setChecked(getTurbo(1));
             swTurboX.setChecked(getTurbo(2));
             swTurboY.setChecked(getTurbo(3));
-            swTurboL.setChecked(getTurbo(6));
-            swTurboR.setChecked(getTurbo(7));
-            swTurboZL.setChecked(getTurbo(8));
-            swTurboZR.setChecked(getTurbo(9));
+            swTurboL.setChecked(getTurbo(4));
+            swTurboR.setChecked(getTurbo(5));
+            swTurboZL.setChecked(getTurbo(6));
+            swTurboZR.setChecked(getTurbo(7));
             swHomeMap.setChecked(getHomeMapEnable());
             swPowerMap.setChecked(getPowerMapEnable());
             swPowerOffMap.setChecked(getPowerOffMapEnable());

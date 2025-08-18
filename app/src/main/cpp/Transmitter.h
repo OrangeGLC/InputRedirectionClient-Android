@@ -5,6 +5,7 @@
 #ifndef INPUTREDIRECTIONCLIENT_ANDROID_TRANSMITTER_H
 #define INPUTREDIRECTIONCLIENT_ANDROID_TRANSMITTER_H
 #include <jni.h>
+#include <chrono>
 #include <game-activity/native_app_glue/android_native_app_glue.h>
 #include "Config.h"
 typedef unsigned int u32;
@@ -37,7 +38,9 @@ public:
     void SetDefaultConfigValue();
     void SetDefaultKeyMapValue();
     N3DS_KEY_INDEX GetOutputKeyIndex(INPUT_KEY_INDEX inKeyIndex); /* No use yet. */
-    INPUT_KEY_INDEX GetInputKeyIndex(int keyCode);
+    INPUT_KEY_INDEX GetInputKeyIndex(GameActivityKeyEvent* keyEvent);
+    bool IgnoreEvent(GameActivityKeyEvent* keyEvent);
+    bool NeedTurbo();
     void KeyEventToFrameData();
     void MotionEventToFrameData();
     void OutputKeyIndexToFrameData(N3DS_KEY_INDEX outIndex);
@@ -48,8 +51,8 @@ public:
     bool GetInvertAB();
     void SetInvertXY(bool flg);
     bool GetInvertXY();
-    void SetTurbo(INPUT_KEY_INDEX index, bool flg);
-    bool GetTurbo(INPUT_KEY_INDEX index);
+    void SetTurbo(N3DS_KEY_INDEX index, bool flg);
+    bool GetTurbo(N3DS_KEY_INDEX index);
     void SetHomeMap(bool flg);
     bool GetHomeMap();
     void SetPowerMap(bool flg);
@@ -65,6 +68,8 @@ private:
     std::string mConfigPath;
     bool mHasFocus, mIsVisible, mHasWindow;
     bool mTurboMark[MAX_N3DS_KEY_INDEX];
+    using clock = std::chrono::high_resolution_clock;
+    typeof(clock::now()) mLastTurboTime;
     Config mCfg;
     KEY_STATE mKeysState[MAX_INPUT_KEY_INDEX];
     AxisValue mJoystick[MAX_JOYSTICK_INDEX];

@@ -40,6 +40,7 @@
         android:layout_height="wrap_content"
         android:text="Save"
         android:layout_marginLeft="20dp"
+        android:textAllCaps="false"
         app:layout_constraintStart_toEndOf="@id/et_ip"
         app:layout_constraintBottom_toBottomOf="@id/et_ip"/>
 
