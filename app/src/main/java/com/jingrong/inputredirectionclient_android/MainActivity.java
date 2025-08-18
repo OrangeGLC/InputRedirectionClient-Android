@@ -28,7 +28,6 @@ public class MainActivity extends GameActivity {
     public native void cleanNative();
     public native String saveIPAddress(String input);
     public native String getCfgIP();
-    public native void handleKeyEvent(int keyCode, int scanCode, int action, int source);
     public native void setInvertAB(boolean flg);
     public native boolean getInvertAB();
     public native void setInvertXY(boolean flg);
@@ -45,6 +44,8 @@ public class MainActivity extends GameActivity {
     {
         runOnUiThread(()-> {
             etIP.setText(getCfgIP());
+            etIP.setEnabled(false);
+            btSaveIP.setText(R.string.bt_txt_edit);
             swInvertAB.setChecked(getInvertAB());
             swInvertXY.setChecked(getInvertXY());
             swTurboA.setChecked(getTurbo(0));
@@ -92,25 +93,26 @@ public class MainActivity extends GameActivity {
         etPower = findViewById(R.id.et_power);
         etPowerOff = findViewById(R.id.et_shut);
 
-        etIP.setOnKeyListener(new View.OnKeyListener() {
-            @Override
-            public boolean onKey(View view, int i, KeyEvent keyEvent) {
-                handleKeyEvent(keyEvent.getKeyCode(), keyEvent.getScanCode(), keyEvent.getAction(), keyEvent.getSource());
-                return false;
-            }
-        });
-
         btSaveIP.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                String input = etIP.getText().toString();
-                if (!isValidIP(input)) {
-                    showErrorDialog();
-                    return;
+                String txtSave = getString(R.string.bt_txt_save);
+                if(btSaveIP.getText().toString().equals(txtSave)){
+                    String input = etIP.getText().toString();
+                    if (!isValidIP(input)) {
+                        showErrorDialog();
+                        return;
+                    }
+                    hideKeyboard(MainActivity.this);
+                    etIP.setEnabled(false);
+                    //Save to file by ndk API
+                    Toast.makeText(MainActivity.this, saveIPAddress(input), Toast.LENGTH_SHORT).show();
+                    btSaveIP.setText(R.string.bt_txt_edit);
+                }else {
+                    etIP.setEnabled(true);
+                    btSaveIP.setText(R.string.bt_txt_save);
                 }
-                hideKeyboard(MainActivity.this);
-                //Save to file by ndk API
-                Toast.makeText(MainActivity.this, saveIPAddress(input), Toast.LENGTH_SHORT).show();
+
             }
         });
         btDisableTurbo.setOnClickListener(new View.OnClickListener() {

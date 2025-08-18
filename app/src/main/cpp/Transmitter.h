@@ -39,7 +39,6 @@ public:
     void SetDefaultKeyMapValue();
     N3DS_KEY_INDEX GetOutputKeyIndex(INPUT_KEY_INDEX inKeyIndex); /* No use yet. */
     INPUT_KEY_INDEX GetInputKeyIndex(GameActivityKeyEvent* keyEvent);
-    bool IgnoreEvent(GameActivityKeyEvent* keyEvent);
     bool NeedTurbo();
     void KeyEventToFrameData();
     void MotionEventToFrameData();

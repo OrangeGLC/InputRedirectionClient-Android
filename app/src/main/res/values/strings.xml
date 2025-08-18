@@ -12,4 +12,5 @@
     <string name="et_l3r3">L3+R3</string>
     <string name="bt_txt_disableAllTurbo">Disable</string>
     <string name="bt_txt_scroff">ScreenOff</string>
+    <string name="bt_txt_edit">Edit</string>
 </resources>

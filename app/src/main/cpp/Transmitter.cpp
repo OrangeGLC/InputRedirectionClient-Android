@@ -486,7 +486,6 @@ void Transmitter::HandleInputEvent()
     {
         for(int i=0; i<inputBuffer->keyEventsCount; ++i)
         {
-            if(IgnoreEvent(&inputBuffer->keyEvents[i])) continue;
             HandleKeyEvent(&inputBuffer->keyEvents[i]);
         }
         android_app_clear_key_events(inputBuffer);
@@ -653,20 +652,6 @@ void Transmitter::SetPowerOffMap(bool flg)
 bool Transmitter::GetPowerOffMap()
 {
     return mCfg.gamepadCfg.mapShut;
-}
-
-bool Transmitter::IgnoreEvent(GameActivityKeyEvent *keyEvent)
-{
-    const int blackListLength = sizeof(gScanCodeBlackList)/sizeof(gScanCodeBlackList[0]);
-    for(auto i=0; i<blackListLength; ++i)
-    {
-        if(keyEvent->scanCode == gScanCodeBlackList[i])
-        {
-            ALOGD("Ignore event, scancode = %d", keyEvent->scanCode);
-            return true;
-        }
-    }
-    return false;
 }
 
 bool Transmitter::NeedTurbo()
