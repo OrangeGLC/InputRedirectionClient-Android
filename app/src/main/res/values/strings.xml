@@ -1,3 +1,15 @@
 <resources>
     <string name="app_name">InputRedirectionClient-Android</string>
+    <string name="bt_txt_save">Save</string>
+    <string name="title_mappingswap">Mapping Swap</string>
+    <string name="title_turbo">3DS Buttons Turbo</string>
+    <string name="title_spBtmap">3DS Special Buttons Mapping</string>
+    <string name="sw_txt_home">Home</string>
+    <string name="sw_txt_power">Power</string>
+    <string name="sw_txt_poweroff">PowerOff</string>
+    <string name="et_home">HOME</string>
+    <string name="et_share">SHARE</string>
+    <string name="et_l3r3">L3+R3</string>
+    <string name="bt_txt_disableAllTurbo">Disable</string>
+    <string name="bt_txt_scroff">ScreenOff</string>
 </resources>

@@ -38,7 +38,7 @@
         android:id="@+id/bt_save"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Save"
+        android:text="@string/bt_txt_save"
         android:layout_marginLeft="20dp"
         android:textAllCaps="false"
         app:layout_constraintStart_toEndOf="@id/et_ip"
@@ -69,7 +69,7 @@
             android:id="@+id/tv_invert"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Mapping Swap"
+            android:text="@string/title_mappingswap"
             app:layout_constraintStart_toStartOf="parent"
             tools:ignore="MissingConstraints" />
 
@@ -115,7 +115,7 @@
             android:id="@+id/tv_turbo"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="3DS Buttons Turbo"
+            android:text="@string/title_turbo"
             app:layout_constraintStart_toStartOf="parent"
             tools:ignore="MissingConstraints" />
 
@@ -185,9 +185,20 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="ZR"
+            app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintBottom_toBottomOf="@+id/switch_turbo_ZL" />
 
+        <Button
+            android:id="@+id/bt_disableturbo"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/bt_txt_disableAllTurbo"
+            app:layout_constraintStart_toEndOf="@id/switch_turbo_ZR"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/switch_turbo_R"
+            app:layout_constraintBottom_toBottomOf="parent"
+            android:textAllCaps="false"/>
     </androidx.constraintlayout.widget.ConstraintLayout>
 
     <View
@@ -213,7 +224,7 @@
             android:id="@+id/tv_specialbt"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="3DS Special Buttons Mapping"
+            android:text="@string/title_spBtmap"
             app:layout_constraintStart_toStartOf="parent"
             tools:ignore="MissingConstraints" />
 
@@ -221,7 +232,7 @@
             android:id="@+id/switch_home"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Home"
+            android:text="@string/sw_txt_home"
             android:layout_marginTop="10dp"
             app:layout_constraintEnd_toEndOf="@id/switch_shut"
             app:layout_constraintTop_toBottomOf="@id/tv_specialbt" />
@@ -230,9 +241,8 @@
             android:id="@+id/et_home"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:ems="3"
             android:inputType="text"
-            android:text="HOME"
+            android:text="@string/et_home"
             android:focusable="false"
             android:clickable="false"
             android:cursorVisible="false"
@@ -246,7 +256,7 @@
             android:id="@+id/switch_power"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Power"
+            android:text="@string/sw_txt_power"
             android:layout_marginTop="20dp"
             app:layout_constraintEnd_toEndOf="@id/switch_shut"
             app:layout_constraintTop_toBottomOf="@id/switch_home" />
@@ -255,9 +265,8 @@
             android:id="@+id/et_power"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:ems="3"
             android:inputType="text"
-            android:text="SHARE"
+            android:text="@string/et_share"
             android:focusable="false"
             android:clickable="false"
             android:cursorVisible="false"
@@ -271,7 +280,7 @@
             android:id="@+id/switch_shut"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="PowerOff"
+            android:text="@string/sw_txt_poweroff"
             android:layout_marginTop="20dp"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/switch_power" />
@@ -280,9 +289,8 @@
             android:id="@+id/et_shut"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:ems="3"
             android:inputType="text"
-            android:text="L3+R3"
+            android:text="@string/et_l3r3"
             android:focusable="false"
             android:clickable="false"
             android:cursorVisible="false"
@@ -299,7 +307,8 @@
         android:layout_width="180dp"
         android:layout_height="50dp"
         android:layout_marginTop="50dp"
-        android:text="ScreenOff"
+        android:text="@string/bt_txt_scroff"
+        android:textAllCaps="false"
         app:layout_constraintTop_toBottomOf="@+id/group_specialbt"
         app:layout_constraintLeft_toLeftOf="@id/main_page"
         app:layout_constraintRight_toRightOf="@id/main_page"/>

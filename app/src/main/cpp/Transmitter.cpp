@@ -50,7 +50,7 @@ Transmitter::Transmitter(struct android_app *app)
     {
         mKeysState[i] = KEY_STATE_UP;
     }
-    for(auto i=0; i<MAX_N3DS_KEY_INDEX; ++i)
+    for(auto i=0; i<MAX_N3DS_KEY_TURBO_INDEX; ++i)
     {
         mTurboMark[i] = false;
     }
@@ -141,63 +141,48 @@ void Transmitter::SetDefaultKeyMapValue()
                 break;
             case INPUT_KEY_INDEX_SELECT:
                 mCfg.gamepadCfg.targetKeyIndex[i] = N3DS_KEY_INDEX_SELECT;
-                mCfg.gamepadCfg.turbo[mCfg.gamepadCfg.targetKeyIndex[i]] = TURBO_NOT_SUPPORT;
                 break;
             case INPUT_KEY_INDEX_START:
                 mCfg.gamepadCfg.targetKeyIndex[i] = N3DS_KEY_INDEX_START;
-                mCfg.gamepadCfg.turbo[mCfg.gamepadCfg.targetKeyIndex[i]] = TURBO_NOT_SUPPORT;
                 break;
             case INPUT_KEY_INDEX_UP:
                 mCfg.gamepadCfg.targetKeyIndex[i] = N3DS_KEY_INDEX_UP;
-                mCfg.gamepadCfg.turbo[mCfg.gamepadCfg.targetKeyIndex[i]] = TURBO_NOT_SUPPORT;
                 break;
             case INPUT_KEY_INDEX_DOWN:
                 mCfg.gamepadCfg.targetKeyIndex[i] = N3DS_KEY_INDEX_DOWN;
-                mCfg.gamepadCfg.turbo[mCfg.gamepadCfg.targetKeyIndex[i]] = TURBO_NOT_SUPPORT;
                 break;
             case INPUT_KEY_INDEX_RIGHT:
                 mCfg.gamepadCfg.targetKeyIndex[i] = N3DS_KEY_INDEX_RIGHT;
-                mCfg.gamepadCfg.turbo[mCfg.gamepadCfg.targetKeyIndex[i]] = TURBO_NOT_SUPPORT;
                 break;
             case INPUT_KEY_INDEX_LEFT:
                 mCfg.gamepadCfg.targetKeyIndex[i] = N3DS_KEY_INDEX_LEFT;
-                mCfg.gamepadCfg.turbo[mCfg.gamepadCfg.targetKeyIndex[i]] = TURBO_NOT_SUPPORT;
                 break;
             case INPUT_KEY_INDEX_R3:
                 mCfg.gamepadCfg.targetKeyIndex[i] = N3DS_KEY_INDEX_R;
-                mCfg.gamepadCfg.turbo[mCfg.gamepadCfg.targetKeyIndex[i]] = TURBO_DISABLE;
                 break;
             case INPUT_KEY_INDEX_L3:
                 mCfg.gamepadCfg.targetKeyIndex[i] = N3DS_KEY_INDEX_L;
-                mCfg.gamepadCfg.turbo[mCfg.gamepadCfg.targetKeyIndex[i]] = TURBO_DISABLE;
                 break;
             case INPUT_KEY_INDEX_HOME:
                 mCfg.gamepadCfg.targetKeyIndex[i] = N3DS_KEY_INDEX_HOME;
-                mCfg.gamepadCfg.turbo[mCfg.gamepadCfg.targetKeyIndex[i]] = TURBO_NOT_SUPPORT;
                 break;
             case INPUT_KEY_INDEX_SHARE:
                 mCfg.gamepadCfg.targetKeyIndex[i] = N3DS_KEY_INDEX_POWER;
-                mCfg.gamepadCfg.turbo[mCfg.gamepadCfg.targetKeyIndex[i]] = TURBO_NOT_SUPPORT;
                 break;
             case INPUT_KEY_INDEX_SCRSHOT:
                 mCfg.gamepadCfg.targetKeyIndex[i] = N3DS_KEY_INDEX_POWER;
-                mCfg.gamepadCfg.turbo[mCfg.gamepadCfg.targetKeyIndex[i]] = TURBO_NOT_SUPPORT;
                 break;
             case INPUT_KEY_INDEX_JCL_UP:
                 mCfg.gamepadCfg.targetKeyIndex[i] = N3DS_KEY_INDEX_UP;
-                mCfg.gamepadCfg.turbo[mCfg.gamepadCfg.targetKeyIndex[i]] = TURBO_NOT_SUPPORT;
                 break;
             case INPUT_KEY_INDEX_JCL_DOWN:
                 mCfg.gamepadCfg.targetKeyIndex[i] = N3DS_KEY_INDEX_DOWN;
-                mCfg.gamepadCfg.turbo[mCfg.gamepadCfg.targetKeyIndex[i]] = TURBO_NOT_SUPPORT;
                 break;
             case INPUT_KEY_INDEX_JCL_LEFT:
                 mCfg.gamepadCfg.targetKeyIndex[i] = N3DS_KEY_INDEX_LEFT;
-                mCfg.gamepadCfg.turbo[mCfg.gamepadCfg.targetKeyIndex[i]] = TURBO_NOT_SUPPORT;
                 break;
             case INPUT_KEY_INDEX_JCL_RIGHT:
                 mCfg.gamepadCfg.targetKeyIndex[i] = N3DS_KEY_INDEX_RIGHT;
-                mCfg.gamepadCfg.turbo[mCfg.gamepadCfg.targetKeyIndex[i]] = TURBO_NOT_SUPPORT;
                 break;
             default:
                 ALOGE("Invalid index %d", i);
@@ -353,7 +338,9 @@ void Transmitter::OutputKeyIndexToFrameData(N3DS_KEY_INDEX outIndex)
     if(outIndex == N3DS_KEY_INDEX_POWER && !mCfg.gamepadCfg.mapPower) return;
 
     if(outIndex == N3DS_KEY_INDEX_HOME && !mCfg.gamepadCfg.mapHome) return;
-    if(mTurboMark[outIndex] && mCfg.gamepadCfg.turbo[outIndex] == TURBO_ENABLE)
+    if(outIndex < MAX_N3DS_KEY_TURBO_INDEX &&
+        mTurboMark[outIndex] &&
+        mCfg.gamepadCfg.turbo[outIndex] == TURBO_ENABLE)
     {
         ALOGD("Send empty frame");
         mTurboMark[outIndex] = false;
@@ -373,7 +360,8 @@ void Transmitter::OutputKeyIndexToFrameData(N3DS_KEY_INDEX outIndex)
         default:
             break;
     }
-    if(mCfg.gamepadCfg.turbo[outIndex] == TURBO_ENABLE)
+    if(outIndex < MAX_N3DS_KEY_TURBO_INDEX &&
+        mCfg.gamepadCfg.turbo[outIndex] == TURBO_ENABLE)
     {
         ALOGD("Send normal frame");
         mLastTurboTime = clock::now();
@@ -403,10 +391,6 @@ void Transmitter::HandleKeyEvent(GameActivityKeyEvent* keyEvent)
             return;
         }
         mKeysState[inIndex] = keyEvent->action == AKEY_EVENT_ACTION_DOWN?KEY_STATE_DOWN:KEY_STATE_UP;
-        if(keyEvent->action != AKEY_EVENT_ACTION_DOWN)
-        {
-            ALOGD("Key up");
-        }
     }
 }
 

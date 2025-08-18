@@ -53,12 +53,14 @@ JNIEXPORT void JNICALL
 Java_com_jingrong_inputredirectionclient_1android_MainActivity_handleKeyEvent(JNIEnv *env,
                                                                               jobject thiz,
                                                                               jint keyCode,
+                                                                              jint scanCode,
                                                                               jint action,
                                                                               jint source)
 {
     GameActivityKeyEvent keyEvent;
     keyEvent.action = action;
     keyEvent.keyCode = keyCode;
+    keyEvent.scanCode = scanCode;
     keyEvent.source = source;
     Transmitter* tr = Transmitter::GetInstance();
     if(nullptr!= tr)

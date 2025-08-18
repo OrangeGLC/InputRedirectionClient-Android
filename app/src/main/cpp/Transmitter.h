@@ -67,7 +67,7 @@ private:
     const char* mConfigName = "/config.cfg";
     std::string mConfigPath;
     bool mHasFocus, mIsVisible, mHasWindow;
-    bool mTurboMark[MAX_N3DS_KEY_INDEX];
+    bool mTurboMark[MAX_N3DS_KEY_TURBO_INDEX];
     using clock = std::chrono::high_resolution_clock;
     typeof(clock::now()) mLastTurboTime;
     Config mCfg;

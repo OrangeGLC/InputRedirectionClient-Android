@@ -33,7 +33,7 @@ typedef struct GamepadCfg
     bool mapPower;
     bool mapShut;
     N3DS_KEY_INDEX  targetKeyIndex[MAX_INPUT_KEY_INDEX];
-    TURBO_STATE turbo[MAX_N3DS_KEY_INDEX]; /* Target keys on N3DS */
+    TURBO_STATE turbo[MAX_N3DS_KEY_TURBO_INDEX]; /* Target keys on N3DS */
     //StickCalibratCfg stkCalibratCfg;
 }GamepadCfg;
 

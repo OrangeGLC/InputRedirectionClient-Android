@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">3DS手柄</string>
+    <string name="bt_txt_save">保存</string>
+    <string name="title_mappingswap">映射交换</string>
+    <string name="title_turbo">3DS按键连发</string>
+    <string name="title_spBtmap">3DS特殊按键映射</string>
+    <string name="sw_txt_home">房子键</string>
+    <string name="sw_txt_power">电源键</string>
+    <string name="sw_txt_poweroff">关机(长按电源)</string>
+    <string name="et_home">Logo键</string>
+    <string name="et_share">分享(截图)键</string>
+    <string name="et_l3r3">左右摇杆按下</string>
+    <string name="bt_txt_disableAllTurbo">关闭全部</string>
+    <string name="bt_txt_scroff">熄屏</string>
+</resources>

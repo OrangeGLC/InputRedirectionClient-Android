@@ -28,7 +28,7 @@ public class MainActivity extends GameActivity {
     public native void cleanNative();
     public native String saveIPAddress(String input);
     public native String getCfgIP();
-    public native void handleKeyEvent(int keyCode, int action, int source);
+    public native void handleKeyEvent(int keyCode, int scanCode, int action, int source);
     public native void setInvertAB(boolean flg);
     public native boolean getInvertAB();
     public native void setInvertXY(boolean flg);
@@ -74,6 +74,7 @@ public class MainActivity extends GameActivity {
 
         etIP = findViewById(R.id.et_ip);
         btSaveIP = findViewById(R.id.bt_save);
+        btDisableTurbo = findViewById(R.id.bt_disableturbo);
         swInvertAB = findViewById(R.id.switch_invertAB);
         swInvertXY = findViewById(R.id.switch_invertXY);
         swTurboA = findViewById(R.id.switch_turbo_A);
@@ -94,7 +95,7 @@ public class MainActivity extends GameActivity {
         etIP.setOnKeyListener(new View.OnKeyListener() {
             @Override
             public boolean onKey(View view, int i, KeyEvent keyEvent) {
-                handleKeyEvent(keyEvent.getKeyCode(), keyEvent.getAction(), keyEvent.getSource());
+                handleKeyEvent(keyEvent.getKeyCode(), keyEvent.getScanCode(), keyEvent.getAction(), keyEvent.getSource());
                 return false;
             }
         });
@@ -110,6 +111,15 @@ public class MainActivity extends GameActivity {
                 hideKeyboard(MainActivity.this);
                 //Save to file by ndk API
                 Toast.makeText(MainActivity.this, saveIPAddress(input), Toast.LENGTH_SHORT).show();
+            }
+        });
+        btDisableTurbo.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                for (int i = 0; i < 8; i++) {
+                    setTurbo(i,false);
+                }
+                updateUI();
             }
         });
 
@@ -163,7 +173,7 @@ public class MainActivity extends GameActivity {
             @Override
             public void onCheckedChanged(@NonNull CompoundButton compoundButton, boolean b)
             {
-                setTurbo(6, b);
+                setTurbo(4, b);
             }
         });
 
@@ -171,7 +181,7 @@ public class MainActivity extends GameActivity {
             @Override
             public void onCheckedChanged(@NonNull CompoundButton compoundButton, boolean b)
             {
-                setTurbo(7, b);
+                setTurbo(5, b);
             }
         });
 
@@ -179,7 +189,7 @@ public class MainActivity extends GameActivity {
             @Override
             public void onCheckedChanged(@NonNull CompoundButton compoundButton, boolean b)
             {
-                setTurbo(8, b);
+                setTurbo(6, b);
             }
         });
 
@@ -187,7 +197,7 @@ public class MainActivity extends GameActivity {
             @Override
             public void onCheckedChanged(@NonNull CompoundButton compoundButton, boolean b)
             {
-                setTurbo(9, b);
+                setTurbo(7, b);
             }
         });
 
@@ -270,6 +280,7 @@ public class MainActivity extends GameActivity {
     private EditText etIP;
     private Button btSaveIP;
     private Button btOffScr;
+    private Button btDisableTurbo;
     private Switch swInvertAB;
     private Switch swInvertXY;
     private Switch swTurboA;
