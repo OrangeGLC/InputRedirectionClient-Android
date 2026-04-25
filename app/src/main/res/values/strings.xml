@@ -13,4 +13,5 @@
     <string name="bt_txt_disableAllTurbo">Disable</string>
     <string name="bt_txt_scroff">ScreenOff</string>
     <string name="bt_txt_edit">Edit</string>
+    <string name="scrctl_fail">Screen-off service not running.\n\nThe command has been copied to clipboard.\nConnect to computer and run it to enable screen-off.</string>
 </resources>

@@ -1,9 +1,12 @@
 package com.jingrong.inputredirectionclient_android;
 
 import android.app.Activity;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.Context;
 import android.os.Bundle;
 import android.text.InputType;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
@@ -19,6 +22,12 @@ import androidx.appcompat.app.AlertDialog;
 import com.google.androidgamesdk.GameActivity;
 
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
 
 public class MainActivity extends GameActivity {
     static {
@@ -76,6 +85,7 @@ public class MainActivity extends GameActivity {
         etIP = findViewById(R.id.et_ip);
         btSaveIP = findViewById(R.id.bt_save);
         btDisableTurbo = findViewById(R.id.bt_disableturbo);
+        btOffScr = findViewById(R.id.bt_offScr);
         swInvertAB = findViewById(R.id.switch_invertAB);
         swInvertXY = findViewById(R.id.switch_invertXY);
         swTurboA = findViewById(R.id.switch_turbo_A);
@@ -122,6 +132,13 @@ public class MainActivity extends GameActivity {
                     setTurbo(i,false);
                 }
                 updateUI();
+            }
+        });
+
+        btOffScr.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                new Thread(() -> sendScrCmd(true)).start();
             }
         });
 
@@ -239,6 +256,35 @@ public class MainActivity extends GameActivity {
         etPowerOff.setInputType(InputType.TYPE_NULL);
         etPowerOff.setFocusable(false);
         etPowerOff.setClickable(false);
+
+        unzipFiles();
+    }
+
+    private void unzipFiles() {
+        File dir = getExternalFilesDir(null);
+        if (dir == null) return;
+        String sh = dir.getPath() + "/scrctl.sh";
+        String dexPath = dir.getPath() + "/scrctl.dex";
+        try {
+            InputStream is = getAssets().open("scrctl.sh");
+            FileOutputStream fos = new FileOutputStream(sh);
+            byte[] buffer = new byte[1024];
+            int len;
+            while ((len = is.read(buffer)) > 0) fos.write(buffer, 0, len);
+            is.close();
+            fos.flush();
+            fos.close();
+        } catch (IOException ignored) {}
+        try {
+            InputStream is = getAssets().open("ScrCtl.dex");
+            FileOutputStream fos = new FileOutputStream(dexPath);
+            byte[] buffer = new byte[1024];
+            int len;
+            while ((len = is.read(buffer)) > 0) fos.write(buffer, 0, len);
+            is.close();
+            fos.flush();
+            fos.close();
+        } catch (IOException ignored) {}
     }
 
     @Override
@@ -279,6 +325,76 @@ public class MainActivity extends GameActivity {
             }
         }
     }
+
+    // --- Screen-off via ScrCtl UDP service ---
+
+    private boolean scrOff;
+
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        if (scrOff && (keyCode == KeyEvent.KEYCODE_VOLUME_UP ||
+                keyCode == KeyEvent.KEYCODE_VOLUME_DOWN)) {
+            new Thread(() -> {
+                if (trySendScrCmd(false)) {
+                    runOnUiThread(() -> scrOff = false);
+                }
+            }).start();
+            return true;
+        }
+        return super.onKeyDown(keyCode, event);
+    }
+
+    private static final int SCR_PORT = 64531;
+    private static final InetAddress SCR_HOST = InetAddress.getLoopbackAddress();
+
+    private static final String SCRCTL_CMD =
+            "adb shell sh /sdcard/Android/data/com.jingrong.inputredirectionclient_android/files/scrctl.sh";
+
+    private void sendScrCmd(boolean off) {
+        if (trySendScrCmd(off)) {
+            scrOff = off;
+            return;
+        }
+        runOnUiThread(() -> {
+            ClipboardManager cm = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+            cm.setPrimaryClip(ClipData.newPlainText("scrctl", SCRCTL_CMD));
+            new AlertDialog.Builder(MainActivity.this)
+                    .setMessage(getString(R.string.scrctl_fail))
+                    .setPositiveButton(android.R.string.ok, null)
+                    .show();
+        });
+    }
+
+    private boolean trySendScrCmd(boolean off) {
+        try (DatagramSocket socket = new DatagramSocket()) {
+            socket.setSoTimeout(1500);
+
+            // Ping
+            byte[] ask = {(byte) 0xAA};
+            DatagramPacket askPkt = new DatagramPacket(ask, 1, SCR_HOST, SCR_PORT);
+            socket.send(askPkt);
+            byte[] buf = new byte[1];
+            DatagramPacket respPkt = new DatagramPacket(buf, 1);
+            socket.receive(respPkt);
+
+            if (buf[0] != (byte) 0x55) {
+                Log.w("Main", "ScrCtl bad ack: " + buf[0]);
+                return false;
+            }
+
+            // Send command: 0=off, 2=on
+            byte[] cmd = {(byte) (off ? 0 : 2)};
+            DatagramPacket cmdPkt = new DatagramPacket(cmd, 1, SCR_HOST, SCR_PORT);
+            socket.send(cmdPkt);
+            Log.d("Main", "ScrCtl screen " + (off ? "off" : "on"));
+            return true;
+
+        } catch (Exception e) {
+            Log.w("Main", "ScrCtl unreachable", e);
+            return false;
+        }
+    }
+
     private EditText etIP;
     private Button btSaveIP;
     private Button btOffScr;
