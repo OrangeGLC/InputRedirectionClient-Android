@@ -14,4 +14,5 @@
     <string name="bt_txt_disableAllTurbo">关闭全部</string>
     <string name="bt_txt_scroff">熄屏</string>
     <string name="bt_txt_edit">修改</string>
+    <string name="scrctl_fail">熄屏服务未启动。\n\n命令已复制到剪贴板，请连接电脑执行即可启用熄屏功能。</string>
 </resources>
