@@ -1,9 +1,11 @@
 package com.jingrong.inputredirectionclient_android;
 
+import android.Manifest;
 import android.app.Activity;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.text.Html;
 import android.text.method.LinkMovementMethod;
@@ -88,6 +90,12 @@ public class MainActivity extends GameActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        if (checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT)
+                != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{Manifest.permission.BLUETOOTH_CONNECT}, 0);
+        }
+
         //Read IP from config file
         File inPath = getFilesDir();
         initNative(inPath.getAbsolutePath());
@@ -396,7 +404,7 @@ public class MainActivity extends GameActivity {
     private static final InetAddress SCR_HOST = InetAddress.getLoopbackAddress();
 
     private static final String SCRCTL_CMD =
-            "adb shell sh /sdcard/Android/data/com.jingrong.inputredirectionclient_android/files/scrctl.sh";
+            "sh /sdcard/Android/data/com.jingrong.inputredirectionclient_android/files/scrctl.sh";
 
     private void sendScrCmd(boolean off) {
         if (trySendScrCmd(off)) {

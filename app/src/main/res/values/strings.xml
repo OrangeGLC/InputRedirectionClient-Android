@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">InputRedirectionClient-Android</string>
+    <string name="app_name">IRCA</string>
     <string name="bt_txt_save">Save</string>
     <string name="title_mappingswap">Mapping Swap</string>
     <string name="title_turbo">3DS Buttons Turbo</string>
@@ -13,13 +13,14 @@
     <string name="turbo_interval_title">Turbo Interval</string>
     <string name="turbo_interval_label">%d ms</string>
     <string name="bt_txt_disableAllTurbo">Disable</string>
+    <string name="scrctl_hint">Screen off: press Volume key to wake. Do NOT press Power.</string>
     <string name="bt_txt_scroff">ScreenOff</string>
     <string name="bt_txt_edit">Edit</string>
-    <string name="scrctl_fail">Screen-off service not running.\n\nThe command has been copied to clipboard.\nConnect to computer and run it to enable screen-off.</string>
+    <string name="scrctl_fail">Screen-off service not running.\n\nThe command has been copied to clipboard.\nInput to ADB shell and run it to enable screen-off.</string>
     <string name="bt_txt_about">About</string>
     <string name="about_title">About</string>
     <string name="about_msg"><![CDATA[
-    <b>手柄热点 V1.0</b>
+    <b>手柄热点/IRCA V1.0</b>
     <br>InputRedirectionClient-Android<br><br>
     Use Android device as a wireless gamepad for Nintendo 3DS.<br><br>
     This software is open source and free.<br><br>
@@ -37,6 +38,9 @@
     <b>Support Author:</b><br>
     <a href="https://gitee.com/rojing/payment-qr-code/raw/master/zfb.png">Alipay</a> ·
     <a href="https://gitee.com/rojing/payment-qr-code/raw/master/vx.jpg">WeChat Pay</a> ·
-    <a href="https://paypal.me/rong4916">PayPal</a><br><br>
+    <a href="https://paypal.me/rong4916">PayPal</a><br><br><br>
+    <b>Feedback:</b><br>
+    · QQ Group: <a href="https://qun.qq.com/universal-share/share?ac=1&authKey=ooZXylgOXmXsXaPTYizhICRho3s8RsvuzWQlm18%2FhjvcmhcgbF2PhCt1FFg%2BFPa0&busi_data=eyJncm91cENvZGUiOiIxMTA0MzEwMTE0IiwidG9rZW4iOiJZSkdxQlRPSzZBaTU1V2YyeXFMSTFFeThvZXo5WmRNcDFvUnRhVlRUMHpTUnM0THRJektZZVlyVExhRENLN0ZGIiwidWluIjoiMTAwNjEyNzQwOSJ9&data=R87JNe5mTfX-SZ7wV0nYd4E8uEfJ1UarNLmbL-cr9CDcDvglR-5pn_Lf_CNbqWZrxWpWlri_VBY3y6qiiD8zvQ&svctype=4&tempid=h5_group_info">1104310114</a><br>
+    · E-mail: <a href="mailto:hzrojing@gmail.com">hzrojing@gmail.com</a><br><br>
     <small>Disclaimer: Nintendo 3DS is a trademark of Nintendo Co., Ltd. All related trademarks and copyrights are the property of Nintendo Co., Ltd. and its affiliates.</small>]]></string>
 </resources>
