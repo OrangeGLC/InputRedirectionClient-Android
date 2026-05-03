@@ -10,8 +10,33 @@
     <string name="et_home">HOME</string>
     <string name="et_share">SHARE</string>
     <string name="et_l3r3">L3+R3</string>
+    <string name="turbo_interval_title">Turbo Interval</string>
+    <string name="turbo_interval_label">%d ms</string>
     <string name="bt_txt_disableAllTurbo">Disable</string>
     <string name="bt_txt_scroff">ScreenOff</string>
     <string name="bt_txt_edit">Edit</string>
     <string name="scrctl_fail">Screen-off service not running.\n\nThe command has been copied to clipboard.\nConnect to computer and run it to enable screen-off.</string>
+    <string name="bt_txt_about">About</string>
+    <string name="about_title">About</string>
+    <string name="about_msg"><![CDATA[
+    <b>手柄热点 V1.0</b>
+    <br>InputRedirectionClient-Android<br><br>
+    Use Android device as a wireless gamepad for Nintendo 3DS.<br><br>
+    This software is open source and free.<br><br>
+
+    <b>Credits:</b><br>
+    • <a href="https://github.com/Stary2001/InputRedirection">InputRedirection</a><br>
+    • <a href="https://github.com/LumaTeam/Luma3DS">Luma3DS</a><br>
+    • <a href="https://github.com/TuxSH/InputRedirectionClient-Qt">InputRedirectionClient-Qt</a><br>
+    • <a href="https://github.com/OrangeGLC/InputRedirectionClient-Raylib">InputRedirectionClient-Raylib</a><br>
+    <br>
+    <b>Repositories:</b><br>
+    • <a href="https://gitee.com/rojing/InputRedirectionClient-Android">Gitee</a><br>
+    • <a href="https://github.com/rojing/InputRedirectionClient-Android">GitHub</a><br>
+    <br>
+    <b>Support Author:</b><br>
+    <a href="https://gitee.com/rojing/payment-qr-code/raw/master/zfb.png">Alipay</a> ·
+    <a href="https://gitee.com/rojing/payment-qr-code/raw/master/vx.jpg">WeChat Pay</a> ·
+    <a href="https://paypal.me/rong4916">PayPal</a><br><br>
+    <small>Disclaimer: Nintendo 3DS is a trademark of Nintendo Co., Ltd. All related trademarks and copyrights are the property of Nintendo Co., Ltd. and its affiliates.</small>]]></string>
 </resources>

@@ -32,8 +32,9 @@ Java_com_jingrong_inputredirectionclient_1android_MainActivity_saveIPAddress(JNI
                                                                              jobject thiz,
                                                                              jstring input)
 {
-    Transmitter::GetInstance()->SetCfgIP(
-            std::string(env->GetStringUTFChars(input, nullptr)));
+    const char* ip = env->GetStringUTFChars(input, nullptr);
+    Transmitter::GetInstance()->SetCfgIP(ip);
+    env->ReleaseStringUTFChars(input, ip);
     return env->NewStringUTF(Transmitter::GetInstance()->SaveConfig() == Transmitter::OK ? "Saved Successfully.":"Failed.");
 }
 
@@ -209,4 +210,21 @@ Java_com_jingrong_inputredirectionclient_1android_MainActivity_getPowerOffMapEna
                                                                                     jobject thiz)
 {
     return Transmitter::GetInstance()->GetPowerOffMap();
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_jingrong_inputredirectionclient_1android_MainActivity_setTurboInterval(
+        JNIEnv *env, jobject thiz, jint ms)
+{
+    Transmitter::GetInstance()->SetTurboInterval(ms);
+    Transmitter::GetInstance()->SaveConfig();
+}
+
+extern "C"
+JNIEXPORT jint JNICALL
+Java_com_jingrong_inputredirectionclient_1android_MainActivity_getTurboInterval(
+        JNIEnv *env, jobject thiz)
+{
+    return Transmitter::GetInstance()->GetTurboInterval();
 }

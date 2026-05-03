@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">3DS手柄</string>
+    <string name="app_name">手柄热点</string>
     <string name="bt_txt_save">保存</string>
     <string name="title_mappingswap">映射交换</string>
     <string name="title_turbo">3DS按键连发</string>
@@ -11,8 +11,33 @@
     <string name="et_home">Logo键</string>
     <string name="et_share">分享(截图)键</string>
     <string name="et_l3r3">左右摇杆按下</string>
+    <string name="turbo_interval_title">连发间隔</string>
+    <string name="turbo_interval_label">%d ms</string>
     <string name="bt_txt_disableAllTurbo">关闭全部</string>
     <string name="bt_txt_scroff">熄屏</string>
     <string name="bt_txt_edit">修改</string>
     <string name="scrctl_fail">熄屏服务未启动。\n\n命令已复制到剪贴板，请连接电脑执行即可启用熄屏功能。</string>
+    <string name="bt_txt_about">关于</string>
+    <string name="about_title">关于</string>
+    <string name="about_msg"><![CDATA[
+    <b>手柄热点 V1.0</b>
+    <br>InputRedirectionClient-Android<br><br>
+    将 Android 设备用作Nintendo 3DS游戏主机的无线手柄。<br><br>
+    本软件开源、免费。<br><br>
+
+    <b>致谢：</b><br>
+    • <a href="https://github.com/Stary2001/InputRedirection">InputRedirection</a><br>
+    • <a href="https://github.com/LumaTeam/Luma3DS">Luma3DS</a><br>
+    • <a href="https://github.com/TuxSH/InputRedirectionClient-Qt">InputRedirectionClient-Qt</a><br>
+    • <a href="https://github.com/OrangeGLC/InputRedirectionClient-Raylib">InputRedirectionClient-Raylib</a><br>
+    <br>
+    <b>本项目仓库：</b><br>
+    • <a href="https://gitee.com/rojing/InputRedirectionClient-Android">Gitee仓库</a><br>
+    • <a href="https://gitee.com/rojing/InputRedirectionClient-Android">Github仓库</a><br><br>
+    <br>
+    <b>支持作者：</b><br>
+    <a href="https://gitee.com/rojing/payment-qr-code/raw/master/zfb.png">支付宝</a> ·
+    <a href="https://gitee.com/rojing/payment-qr-code/raw/master/vx.jpg">微信支付</a> ·
+    <a href="https://paypal.me/rong4916">PayPal</a><br><br>
+    <small>免责声明：Nintendo 3DS 为任天堂株式会社的商标。版权与商标权均归属于任天堂株式会社（Nintendo Co., Ltd.）​ 及其关联公司所有。</small>]]></string>
 </resources>

@@ -45,13 +45,15 @@ public:
     void OutputKeyIndexToFrameData(N3DS_KEY_INDEX outIndex);
     void GenerateFrame();
     RetVal GetCfgIP(char *buffer, size_t size);
-    void SetCfgIP(std::string ip);
+    void SetCfgIP(const char* ip);
     void SetInvertAB(bool flg);
     bool GetInvertAB();
     void SetInvertXY(bool flg);
     bool GetInvertXY();
     void SetTurbo(N3DS_KEY_INDEX index, bool flg);
     bool GetTurbo(N3DS_KEY_INDEX index);
+    void SetTurboInterval(u32 ms);
+    u32 GetTurboInterval();
     void SetHomeMap(bool flg);
     bool GetHomeMap();
     void SetPowerMap(bool flg);
@@ -74,6 +76,7 @@ private:
     AxisValue mJoystick[MAX_JOYSTICK_INDEX];
     FrameData mFrameData;
     char mFrameBuffer[20];
+    int mSock;
 };
 
 #endif //INPUTREDIRECTIONCLIENT_ANDROID_TRANSMITTER_H

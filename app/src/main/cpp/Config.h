@@ -4,8 +4,9 @@
 
 #ifndef INPUTREDIRECTIONCLIENT_ANDROID_CONFIG_H
 #define INPUTREDIRECTIONCLIENT_ANDROID_CONFIG_H
-#include <string>
 #include "Gamepad.h"
+
+#define CONFIG_IP_MAX_LEN 64
 
 
 /* typedef struct StickCalibratCfg
@@ -34,6 +35,7 @@ typedef struct GamepadCfg
     bool mapShut;
     N3DS_KEY_INDEX  targetKeyIndex[MAX_INPUT_KEY_INDEX];
     TURBO_STATE turbo[MAX_N3DS_KEY_TURBO_INDEX]; /* Target keys on N3DS */
+    u32 turboIntervalMs;
     //StickCalibratCfg stkCalibratCfg;
 }GamepadCfg;
 
@@ -41,7 +43,7 @@ typedef struct Config
 {
     u32 cfgSize;
     bool isFirstRun; /* Must as second item because of function Transmiter::LoadConfig */
-    std::string ip;
+    char ip[CONFIG_IP_MAX_LEN];
     GamepadCfg gamepadCfg;
 }Config;
 
