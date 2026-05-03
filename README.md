@@ -29,7 +29,7 @@ The app can turn off the screen without locking the device, so 3DS input redirec
 
 **One-time setup (requires ADB or [LADB](https://play.google.com/store/apps/details?id=com.draco.ladb)):**
 
-When you first tap the **ScreenOff** button, the app will prompt you with a command to run. You can also find the script at:
+If the service is not running when you tap the **ScreenOff** button, the app will copy the command to your clipboard and show a prompt. You can also find the script at:
 
 ```
 sh /sdcard/Android/data/com.jingrong.inputredirectionclient_android/files/scrctl.sh
@@ -41,8 +41,8 @@ sh /sdcard/Android/data/com.jingrong.inputredirectionclient_android/files/scrctl
 After running this script once, the screen-off service starts in the background. It will need to be restarted after a device reboot.
 
 **How to use:**
-- Tap **ScreenOff** to turn off the screen.
-- Press any **Volume key** to wake the screen. Do NOT use the Power button, as that will lock the device.
+- Tap **ScreenOff** to turn off the screen. The screen turns off but the device stays unlocked, so the 3DS connection remains active.
+- To wake the screen, press either **Volume Up** or **Volume Down**. Do NOT use the Power button — it will lock the device, which disconnects the gamepad and interrupts the 3DS connection.
 
 ## Key Mapping
 
@@ -51,18 +51,19 @@ After running this script once, the screen-off service starts in the background.
 | A / B | A / B (swappable) |
 | X / Y | X / Y (swappable) |
 | L / R / ZL / ZR | L / R / ZL / ZR |
-| D-Pad / Left Stick | Circle Pad |
+| D-Pad | +Control Pad |
+| Left Stick | Circle Pad |
 | Right Stick | C-Stick |
-| HOME button | HOME |
-| SHARE button | Power (short press) |
-| L3 + R3 | Power (long press / shutdown) |
+| HOME button | HOME (disabled by default) |
+| SHARE button | Power short press (disabled by default) |
+| L3 + R3 | Power long press / shutdown (disabled by default) |
 
 ## Q&A
 
 1. **Cannot run in background or while screen is locked.**
    - The app must stay in the foreground. Use the built-in **ScreenOff** feature to save power without locking.
 2. **ABXY button mapping may be incorrect.**
-   - Enable "Swap A⇌B" or "Swap X⇌Y" in the settings.
+   - Enable "Swap A<->B" or "Swap X<->Y" in the settings.
 3. **First-gen NS Joy-Con responds slowly.**
    - Rename your Android device to `Nintendo` in Bluetooth settings.
 4. **Screen-off service must be restarted after reboot.**
@@ -70,7 +71,3 @@ After running this script once, the screen-off service starts in the background.
 5. **3DS shows `Starting InputRedirection... failed`.**
    - Make sure your 3DS is connected to Wi-Fi and try again.
 
-## Credits
-
-- Luma3DS: [Luma3DS](https://github.com/LumaTeam/Luma3DS)
-- Original Qt project: [InputRedirectionClient-Qt](https://github.com/TuxSH/InputRedirectionClient-Qt) by TuxSH

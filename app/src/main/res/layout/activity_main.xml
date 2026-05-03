@@ -351,15 +351,28 @@
 
             </androidx.constraintlayout.widget.ConstraintLayout>
 
+            <TextView
+                android:id="@+id/tv_screenoff_hint"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:gravity="center"
+                android:text="@string/scrctl_hint"
+                android:textColor="#FF888888"
+                android:textSize="12sp"
+                app:layout_constraintTop_toBottomOf="@+id/group_specialbt"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent" />
+
             <Button
                 android:id="@+id/bt_offScr"
                 android:layout_width="180dp"
                 android:layout_height="50dp"
-                android:layout_marginTop="50dp"
+                android:layout_marginTop="10dp"
                 android:layout_marginBottom="30dp"
                 android:text="@string/bt_txt_scroff"
                 android:textAllCaps="false"
-                app:layout_constraintTop_toBottomOf="@+id/group_specialbt"
+                app:layout_constraintTop_toBottomOf="@+id/tv_screenoff_hint"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"/>
 

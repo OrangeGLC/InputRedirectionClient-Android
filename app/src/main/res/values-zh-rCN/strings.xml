@@ -14,15 +14,16 @@
     <string name="turbo_interval_title">连发间隔</string>
     <string name="turbo_interval_label">%d ms</string>
     <string name="bt_txt_disableAllTurbo">关闭全部</string>
+    <string name="scrctl_hint">熄屏后按音量键唤醒，请勿按电源键</string>
     <string name="bt_txt_scroff">熄屏</string>
     <string name="bt_txt_edit">修改</string>
-    <string name="scrctl_fail">熄屏服务未启动。\n\n命令已复制到剪贴板，请连接电脑执行即可启用熄屏功能。</string>
+    <string name="scrctl_fail">熄屏服务未启动。\n\n启动命令已复制到剪贴板，请在ADB shell 应用程序中执行。</string>
     <string name="bt_txt_about">关于</string>
     <string name="about_title">关于</string>
     <string name="about_msg"><![CDATA[
-    <b>手柄热点 V1.0</b>
+    <b>手柄热点/IRCA V1.0</b>
     <br>InputRedirectionClient-Android<br><br>
-    将 Android 设备用作Nintendo 3DS游戏主机的无线手柄。<br><br>
+    将 Android 设备用作Nintendo 3DS游戏主机的无线手柄连接器。<br><br>
     本软件开源、免费。<br><br>
 
     <b>致谢：</b><br>
@@ -33,11 +34,14 @@
     <br>
     <b>本项目仓库：</b><br>
     • <a href="https://gitee.com/rojing/InputRedirectionClient-Android">Gitee仓库</a><br>
-    • <a href="https://gitee.com/rojing/InputRedirectionClient-Android">Github仓库</a><br><br>
+    • <a href="https://gitee.com/rojing/InputRedirectionClient-Android">Github仓库</a><br>
     <br>
     <b>支持作者：</b><br>
     <a href="https://gitee.com/rojing/payment-qr-code/raw/master/zfb.png">支付宝</a> ·
     <a href="https://gitee.com/rojing/payment-qr-code/raw/master/vx.jpg">微信支付</a> ·
     <a href="https://paypal.me/rong4916">PayPal</a><br><br>
+    <b>问题反馈：</b><br>
+    · QQ群：<a href="https://qun.qq.com/universal-share/share?ac=1&authKey=ooZXylgOXmXsXaPTYizhICRho3s8RsvuzWQlm18%2FhjvcmhcgbF2PhCt1FFg%2BFPa0&busi_data=eyJncm91cENvZGUiOiIxMTA0MzEwMTE0IiwidG9rZW4iOiJZSkdxQlRPSzZBaTU1V2YyeXFMSTFFeThvZXo5WmRNcDFvUnRhVlRUMHpTUnM0THRJektZZVlyVExhRENLN0ZGIiwidWluIjoiMTAwNjEyNzQwOSJ9&data=R87JNe5mTfX-SZ7wV0nYd4E8uEfJ1UarNLmbL-cr9CDcDvglR-5pn_Lf_CNbqWZrxWpWlri_VBY3y6qiiD8zvQ&svctype=4&tempid=h5_group_info">1104310114</a><br>
+    · E-mail：<a href="mailto:hzrojing@gmail.com">hzrojing@gmail.com</a><br><br>
     <small>免责声明：Nintendo 3DS 为任天堂株式会社的商标。版权与商标权均归属于任天堂株式会社（Nintendo Co., Ltd.）​ 及其关联公司所有。</small>]]></string>
 </resources>
