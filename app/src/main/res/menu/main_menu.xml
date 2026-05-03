@@ -3,10 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
     <item
         android:id="@+id/action_about"
-        android:title="Donate"
-        app:showAsAction="never"/>
-    <item
-        android:id="@+id/action_about"
-        android:title="About"
-        app:showAsAction="never"/>
+        android:title="@string/bt_txt_about"
+        android:icon="@drawable/ic_about"
+        app:showAsAction="always"/>
 </menu>

@@ -61,13 +61,14 @@ Transmitter::Transmitter(struct android_app *app)
     }
 
     mConfigPath = gCfgPath+mConfigName;
+    mSock = -1;
     LoadConfig();
     ALOGD("Transmitter: Finish initialization.");
 }
 
 Transmitter::~Transmitter()
 {
-
+    if(mSock >= 0) close(mSock);
 }
 
 Transmitter *Transmitter::CreateInstance(struct android_app *app) {
@@ -90,7 +91,8 @@ void Transmitter::DestroyInstance()
 void Transmitter::SetDefaultConfigValue()
 {
     mCfg.cfgSize = sizeof(mCfg);
-    mCfg.ip = "192.168.100.100";
+    strncpy(mCfg.ip, "192.168.100.100", CONFIG_IP_MAX_LEN - 1);
+    mCfg.ip[CONFIG_IP_MAX_LEN - 1] = '\0';
     mCfg.gamepadCfg.deadZone[JOYSTICK_L] = 0.05f;
     mCfg.gamepadCfg.deadZone[JOYSTICK_R] = 0.05f;
     mCfg.gamepadCfg.invertAB = false;
@@ -98,6 +100,7 @@ void Transmitter::SetDefaultConfigValue()
     mCfg.gamepadCfg.mapHome = false;
     mCfg.gamepadCfg.mapPower = false;
     mCfg.gamepadCfg.mapShut = false;
+    mCfg.gamepadCfg.turboIntervalMs = 60;
     mCfg.isFirstRun = true;
     SetDefaultKeyMapValue();
 }
@@ -194,90 +197,113 @@ void Transmitter::SetDefaultKeyMapValue()
 void Transmitter::LoadConfig()
 {
     ALOGD("Config file name: %s",mConfigPath.c_str());
-    memset(&mCfg, 0, sizeof(mCfg));
+    SetDefaultConfigValue();
+
     auto fd = open(mConfigPath.c_str(), O_RDONLY);
-    if(-1 == fd) /* No config file, mark as first launch */
+    if(-1 == fd)
     {
-        ALOGD("Failed to open config file when read. %s", strerror(errno));
+        ALOGD("No config file, using defaults. %s", strerror(errno));
+        SaveConfig();
+        return;
+    }
+
+    u32 savedCfgSize = 0;
+    ssize_t n = read(fd, &savedCfgSize, sizeof(savedCfgSize));
+    if(n != sizeof(savedCfgSize))
+    {
+        ALOGE("Failed to read config size (read %zd bytes). %s", n, strerror(errno));
+        close(fd);
+        SaveConfig();
+        return;
+    }
+
+    if(savedCfgSize != sizeof(mCfg))
+    {
+        ALOGW("Config size mismatch: saved=%u current=%zu. Resetting to defaults.",
+              savedCfgSize, sizeof(mCfg));
+        close(fd);
+        SaveConfig();
+        return;
+    }
+
+    n = read(fd, &mCfg.isFirstRun, sizeof(mCfg)-sizeof(mCfg.cfgSize));
+    if(n != (ssize_t)(sizeof(mCfg)-sizeof(mCfg.cfgSize)))
+    {
+        ALOGE("Failed to read config body (read %zd bytes). %s", n, strerror(errno));
+        close(fd);
         SetDefaultConfigValue();
         SaveConfig();
         return;
     }
-    lseek(fd, 0, SEEK_SET);
-    /* Read size of Config */
-    if(-1 == read(fd, &mCfg.cfgSize, sizeof(mCfg.cfgSize)))
-    {
-        ALOGE("Failed to read config file. %s. Load default values.", strerror(errno));
-        close(fd);
-        SetDefaultConfigValue();
-        return;
-    }
-    ALOGI("Config file existed, size=%d. struct size = %d", mCfg.cfgSize, sizeof(mCfg));
-    /* Read config content */
-    if(-1 == read(fd, &mCfg.isFirstRun, sizeof(mCfg)-sizeof(mCfg.cfgSize)))
-    {
-        ALOGE("Failed to read config file. %s. Load default values.", strerror(errno));
-        close(fd);
-        SetDefaultConfigValue();
-        return;
-    }
-    close(fd);
-    /* Update config size */
-    mCfg.cfgSize = sizeof(mCfg);
-    ALOGI("New size of config: %d",mCfg.cfgSize);
 
-    ALOGD("%s: OK", __FUNCTION__ );
+    close(fd);
+    mCfg.cfgSize = sizeof(mCfg);
+    mCfg.ip[CONFIG_IP_MAX_LEN - 1] = '\0';
+    ALOGD("%s: OK, ip=%s", __FUNCTION__, mCfg.ip);
 }
 
 Transmitter::RetVal Transmitter::SaveConfig()
 {
-    auto fd = 0;
-    fd = open(mConfigPath.c_str(), O_WRONLY|O_CREAT|O_TRUNC , 0644);
-    if(-1 == fd ) /* No config file, mark as first launch */
+    std::string tmpPath = mConfigPath + ".tmp";
+    auto fd = open(tmpPath.c_str(), O_WRONLY|O_CREAT|O_TRUNC, 0644);
+    if(-1 == fd)
     {
-        ALOGE("Failed to open config file when write. %s", strerror(errno));
+        ALOGE("Failed to open temp config file. %s", strerror(errno));
         return NOK;
     }
 
-    if(-1 == write(fd, &mCfg, sizeof(mCfg)))
-    {
-        ALOGE("Failed to write config file. %s.", strerror(errno));
-        close(fd);
-        return NOK;
-    }
-
+    ssize_t n = write(fd, &mCfg, sizeof(mCfg));
     close(fd);
-    ALOGD("%s: OK", __FUNCTION__ );
+    if(n != sizeof(mCfg))
+    {
+        ALOGE("Failed to write config (wrote %zd of %zu bytes). %s", n, sizeof(mCfg), strerror(errno));
+        unlink(tmpPath.c_str());
+        return NOK;
+    }
+
+    if(rename(tmpPath.c_str(), mConfigPath.c_str()) != 0)
+    {
+        ALOGE("Failed to rename temp config. %s", strerror(errno));
+        unlink(tmpPath.c_str());
+        return NOK;
+    }
+
+    ALOGD("%s: OK", __FUNCTION__);
     return OK;
 }
 
 void Transmitter::SendFrame()
 {
-    const int sock = socket(AF_INET, SOCK_DGRAM, 0);
-    if (sock < 0) return;
+    if(mSock < 0)
+    {
+        mSock = socket(AF_INET, SOCK_DGRAM, 0);
+        if(mSock < 0) return;
+    }
     sockaddr_in addr = {};
     addr.sin_family = AF_INET;
     addr.sin_port = htons(4950);
-    inet_pton(AF_INET, mCfg.ip.c_str(), &addr.sin_addr);
-    sendto(sock, mFrameBuffer, 20, 0, reinterpret_cast<sockaddr *>(&addr), sizeof(addr));
-    close(sock);
+    inet_pton(AF_INET, mCfg.ip, &addr.sin_addr);
+    if(sendto(mSock, mFrameBuffer, 20, 0,
+              reinterpret_cast<sockaddr *>(&addr), sizeof(addr)) < 0)
+    {
+        close(mSock);
+        mSock = -1;
+    }
 }
 
 void Transmitter::TaskLoop()
 {
     while (!mApp->destroyRequested)
     {
-        int timeout = 0;
         int events;
         android_poll_source *pSource;
-        while(ALooper_pollOnce(timeout, nullptr, &events,
+        while(ALooper_pollOnce(0, nullptr, &events,
                                reinterpret_cast<void**>(&pSource)) >= 0)
         {
             if (pSource) {
                 pSource->process(mApp, pSource);
             }
         }
-
         HandleInputEvent();
     }
 }
@@ -544,24 +570,25 @@ void Transmitter::MotionEventToFrameData()
 
 Transmitter::RetVal Transmitter::GetCfgIP(char *buffer, size_t size)
 {
-    if(nullptr == buffer)
+    if(nullptr == buffer || size == 0)
     {
-        ALOGE("buffer is nullptr");
+        ALOGE("buffer is nullptr or size is 0");
         return NOK;
     }
-    if(mCfg.ip.length() > size)
+    size_t len = strlen(mCfg.ip);
+    if(len >= size)
     {
-        ALOGE("Too small size");
+        ALOGE("Buffer too small: need %zu, got %zu", len + 1, size);
         return NOK;
     }
-    memset(buffer, 0, size);
-    memcpy(buffer,mCfg.ip.c_str(),mCfg.ip.length());
+    memcpy(buffer, mCfg.ip, len + 1);
     return OK;
 }
 
-void Transmitter::SetCfgIP(std::string ip)
+void Transmitter::SetCfgIP(const char* ip)
 {
-    mCfg.ip = ip;
+    strncpy(mCfg.ip, ip, CONFIG_IP_MAX_LEN - 1);
+    mCfg.ip[CONFIG_IP_MAX_LEN - 1] = '\0';
 }
 
 
@@ -624,6 +651,15 @@ bool Transmitter::GetTurbo(N3DS_KEY_INDEX index)
     return false;
 }
 
+void Transmitter::SetTurboInterval(u32 ms)
+{
+    mCfg.gamepadCfg.turboIntervalMs = ms;
+}
+u32 Transmitter::GetTurboInterval()
+{
+    return mCfg.gamepadCfg.turboIntervalMs;
+}
+
 void Transmitter::SetHomeMap(bool flg)
 {
     mCfg.gamepadCfg.mapHome = flg;
@@ -656,21 +692,17 @@ bool Transmitter::GetPowerOffMap()
 
 bool Transmitter::NeedTurbo()
 {
-    using clock = std::chrono::high_resolution_clock;
-    auto now = clock::now();
-
-    if(std::chrono::duration_cast<std::chrono::milliseconds>(now-mLastTurboTime).count() < 60)
+    if(std::chrono::duration_cast<std::chrono::milliseconds>(
+           clock::now() - mLastTurboTime).count() < (int64_t)mCfg.gamepadCfg.turboIntervalMs)
         return false;
     for(auto i=0; i<MAX_INPUT_KEY_INDEX; ++i)
     {
         if(mKeysState[i] == KEY_STATE_DOWN &&
             mCfg.gamepadCfg.turbo[mCfg.gamepadCfg.targetKeyIndex[i]] == TURBO_ENABLE)
         {
-            using clock = std::chrono::high_resolution_clock;
             mLastTurboTime = clock::now();
             return true;
         }
-
     }
     return false;
 }

@@ -5,14 +5,20 @@ import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.os.Bundle;
+import android.text.Html;
+import android.text.method.LinkMovementMethod;
 import android.text.InputType;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.CompoundButton;
 import android.widget.EditText;
+import android.widget.SeekBar;
+import android.widget.TextView;
 import android.widget.Switch;
 import android.widget.Toast;
 
@@ -49,6 +55,8 @@ public class MainActivity extends GameActivity {
     public native boolean getPowerMapEnable();
     public native void setPowerOffMapEnable(boolean flg);
     public native boolean getPowerOffMapEnable();
+    public native void setTurboInterval(int ms);
+    public native int getTurboInterval();
     public void updateUI()
     {
         runOnUiThread(()-> {
@@ -68,6 +76,9 @@ public class MainActivity extends GameActivity {
             swHomeMap.setChecked(getHomeMapEnable());
             swPowerMap.setChecked(getPowerMapEnable());
             swPowerOffMap.setChecked(getPowerOffMapEnable());
+            int interval = getTurboInterval();
+            sbTurboInterval.setProgress(interval);
+            tvTurboInterval.setText(getString(R.string.turbo_interval_label, interval));
             etHome.setEnabled(getHomeMapEnable());
             etPower.setEnabled(getPowerMapEnable());
             etPowerOff.setEnabled(getPowerOffMapEnable());
@@ -85,6 +96,8 @@ public class MainActivity extends GameActivity {
         etIP = findViewById(R.id.et_ip);
         btSaveIP = findViewById(R.id.bt_save);
         btDisableTurbo = findViewById(R.id.bt_disableturbo);
+        sbTurboInterval = findViewById(R.id.sb_turbo_interval);
+        tvTurboInterval = findViewById(R.id.tv_turbo_interval);
         btOffScr = findViewById(R.id.bt_offScr);
         swInvertAB = findViewById(R.id.switch_invertAB);
         swInvertXY = findViewById(R.id.switch_invertXY);
@@ -132,6 +145,16 @@ public class MainActivity extends GameActivity {
                     setTurbo(i,false);
                 }
                 updateUI();
+            }
+        });
+
+        sbTurboInterval.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                tvTurboInterval.setText(getString(R.string.turbo_interval_label, progress));
+            }
+            @Override public void onStartTrackingTouch(SeekBar seekBar) {}
+            @Override public void onStopTrackingTouch(SeekBar seekBar) {
+                setTurboInterval(seekBar.getProgress());
             }
         });
 
@@ -258,6 +281,31 @@ public class MainActivity extends GameActivity {
         etPowerOff.setClickable(false);
 
         unzipFiles();
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.main_menu, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        if (item.getItemId() == R.id.action_about) {
+            showAbout();
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
+    private void showAbout() {
+        AlertDialog dlg = new AlertDialog.Builder(this)
+                .setTitle(getString(R.string.about_title))
+                .setMessage(Html.fromHtml(getString(R.string.about_msg)))
+                .setPositiveButton(android.R.string.ok, null)
+                .show();
+        TextView msg = dlg.findViewById(android.R.id.message);
+        if (msg != null) msg.setMovementMethod(LinkMovementMethod.getInstance());
     }
 
     private void unzipFiles() {
@@ -398,6 +446,8 @@ public class MainActivity extends GameActivity {
     private EditText etIP;
     private Button btSaveIP;
     private Button btOffScr;
+    private SeekBar sbTurboInterval;
+    private TextView tvTurboInterval;
     private Button btDisableTurbo;
     private Switch swInvertAB;
     private Switch swInvertXY;
