@@ -23,20 +23,22 @@ Use your Android device as a wireless game-pad for Nintendo 3DS running Luma3DS.
    3. Select `Start InputRedirection`, press `A`. When `Starting InputRedirection... OK` appears, press `B` to return. The 3DS IP address will be shown in the upper-right corner of the bottom screen.
 4. Launch this app, enter the 3DS IP, and tap **Save**. The connected game-pad should now control your 3DS.
 
-### Screen-Off Feature (V1.0)
+### Screen-Off Feature (non-lock)
 
-The app can turn off the screen without locking the device, so 3DS input redirection continues while saving power.
+Due to Android system limitations, the app cannot receive gamepad events in the background after the screen is locked. Therefore, this app includes a screen-off feature that turns off the screen while keeping the app in the foreground, allowing you to continue controlling your 3DS while saving power.
 
 **One-time setup (requires ADB or [LADB](https://play.google.com/store/apps/details?id=com.draco.ladb)):**
 
-If the service is not running when you tap the **ScreenOff** button, the app will copy the command to your clipboard and show a prompt. You can also find the script at:
+[Video tutorial](https://b23.tv/S9HrO2k)
+
+If the service is not running when you tap the **ScreenOff** button, the app will copy the command to your clipboard and show a prompt:
 
 ```
 sh /sdcard/Android/data/com.jingrong.inputredirectionclient_android/files/scrctl.sh
 ```
 
-- **LADB**: paste and run directly.
-- **Computer (ADB)**: prefix with `adb shell`.
+- **LADB**: Paste into the `Shell command` input box and press Enter.
+- **Computer (ADB)**: Requires ADB environment. Prefix with `adb shell`.
 
 After running this script once, the screen-off service starts in the background. It will need to be restarted after a device reboot.
 
