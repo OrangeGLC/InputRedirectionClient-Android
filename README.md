@@ -7,7 +7,7 @@ Use your Android device as a wireless game-pad for Nintendo 3DS running Luma3DS.
 
 ## Requirements
 
-1. Android 13+ (theoretically works on Android 8.0+)
+1. Android 11+
 2. 3DS with Luma3DS 8.0+
 
 ## Usage
