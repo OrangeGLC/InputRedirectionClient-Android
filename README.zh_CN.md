@@ -7,12 +7,14 @@
 
 ## 运行要求
 
-1. Android 13+
+1. Android 13+ (理论上Android8.0之后都能用)
 2. 3DS 安装 Luma3DS 8.0+
 
 ## 使用说明
 
 ### 基本设置
+
+[视频教程](https://b23.tv/IBf9KgU)
 
 1. Android 设备与 3DS 处于同一局域网内，也可以让 3DS 直接连接 Android 设备的 Wi-Fi 热点。
 2. 将手柄连接到 Android 设备。
@@ -43,6 +45,7 @@ sh /sdcard/Android/data/com.jingrong.inputredirectionclient_android/files/scrctl
 执行一次后，熄屏服务会在后台运行。设备重启后需要重新执行。
 
 **使用方法：**
+
 - 点击**熄屏**关闭屏幕。屏幕关闭但设备不锁屏，3DS 操控连接保持不断。
 - 按**音量加**或**音量减**任一键即可唤醒屏幕。切勿使用电源键——电源键会锁屏，导致手柄断开、3DS 连接中断。
 
