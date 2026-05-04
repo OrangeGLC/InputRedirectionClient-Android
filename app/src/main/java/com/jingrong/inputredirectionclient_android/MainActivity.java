@@ -6,6 +6,7 @@ import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.text.Html;
 import android.text.method.LinkMovementMethod;
@@ -91,9 +92,10 @@ public class MainActivity extends GameActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        if (checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT)
-                != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(new String[]{Manifest.permission.BLUETOOTH_CONNECT}, 0);
+        String btPerm = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+                ? Manifest.permission.BLUETOOTH_CONNECT : Manifest.permission.BLUETOOTH;
+        if (checkSelfPermission(btPerm) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{btPerm}, 0);
         }
 
         //Read IP from config file

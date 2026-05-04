@@ -7,7 +7,7 @@
 
 ## 运行要求
 
-1. Android 13+ (理论上Android8.0之后都能用)
+1. Android 11+
 2. 3DS 安装 Luma3DS 8.0+
 
 ## 使用说明

@@ -8,7 +8,7 @@ android {
 
     defaultConfig {
         applicationId "com.jingrong.inputredirectionclient_android"
-        minSdk 33
+        minSdk 30
         targetSdk 36
         versionCode 1
         versionName "1.0"
@@ -21,10 +21,19 @@ android {
         }
     }
 
+    signingConfigs {
+        release {
+            storeFile file('release.jks')
+            storePassword 'android'
+            keyAlias 'release'
+            keyPassword 'android'
+        }
+    }
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.release
         }
     }
     compileOptions {
