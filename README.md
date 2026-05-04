@@ -7,12 +7,14 @@ Use your Android device as a wireless game-pad for Nintendo 3DS running Luma3DS.
 
 ## Requirements
 
-1. Android 13+
+1. Android 13+ (theoretically works on Android 8.0+)
 2. 3DS with Luma3DS 8.0+
 
 ## Usage
 
 ### Basic Setup
+
+[Video tutorial](https://b23.tv/IBf9KgU)
 
 1. Make sure the Android device and the 3DS are on the same LAN. The 3DS can also connect directly to the Android device's Wi-Fi hotspot.
 2. Connect a game-pad to the Android device.
@@ -43,6 +45,7 @@ sh /sdcard/Android/data/com.jingrong.inputredirectionclient_android/files/scrctl
 After running this script once, the screen-off service starts in the background. It will need to be restarted after a device reboot.
 
 **How to use:**
+
 - Tap **ScreenOff** to turn off the screen. The screen turns off but the device stays unlocked, so the 3DS connection remains active.
 - To wake the screen, press either **Volume Up** or **Volume Down**. Do NOT use the Power button — it will lock the device, which disconnects the gamepad and interrupts the 3DS connection.
 
