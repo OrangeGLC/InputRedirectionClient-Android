@@ -6,8 +6,10 @@ import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.net.wifi.WifiManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.PowerManager;
 import android.text.Html;
 import android.text.method.LinkMovementMethod;
 import android.text.InputType;
@@ -96,6 +98,20 @@ public class MainActivity extends GameActivity {
                 ? Manifest.permission.BLUETOOTH_CONNECT : Manifest.permission.BLUETOOTH;
         if (checkSelfPermission(btPerm) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(new String[]{btPerm}, 0);
+        }
+
+        WifiManager wm = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+        if (wm != null) {
+            wifiLock = wm.createWifiLock(
+                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+                            ? WifiManager.WIFI_MODE_FULL : 0x3 /* WIFI_MODE_FULL_LOCK */,
+                    "IRC:WifiLock");
+            wifiLock.acquire();
+        }
+        PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
+        if (pm != null) {
+            wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "IRC:WakeLock");
+            wakeLock.acquire();
         }
 
         //Read IP from config file
@@ -348,6 +364,8 @@ public class MainActivity extends GameActivity {
     @Override
     protected void onDestroy()
     {
+        if (wifiLock != null && wifiLock.isHeld()) wifiLock.release();
+        if (wakeLock != null && wakeLock.isHeld()) wakeLock.release();
         super.onDestroy();
     }
 
@@ -475,4 +493,6 @@ public class MainActivity extends GameActivity {
     private EditText etHome;
     private EditText etPower;
     private EditText etPowerOff;
+    private WifiManager.WifiLock wifiLock;
+    private PowerManager.WakeLock wakeLock;
 }
