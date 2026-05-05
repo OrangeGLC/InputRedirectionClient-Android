@@ -62,6 +62,7 @@ Transmitter::Transmitter(struct android_app *app)
 
     mConfigPath = gCfgPath+mConfigName;
     mSock = -1;
+    mLastSendTime = clock::now();
     LoadConfig();
     ALOGD("Transmitter: Finish initialization.");
 }
@@ -289,15 +290,16 @@ void Transmitter::SendFrame()
         close(mSock);
         mSock = -1;
     }
+    mLastSendTime = clock::now();
 }
 
 void Transmitter::TaskLoop()
 {
+    int events;
     while (!mApp->destroyRequested)
     {
-        int events;
         android_poll_source *pSource;
-        while(ALooper_pollOnce(0, nullptr, &events,
+        while(ALooper_pollOnce(2, nullptr, &events,
                                reinterpret_cast<void**>(&pSource)) >= 0)
         {
             if (pSource) {
@@ -504,6 +506,12 @@ void Transmitter::HandleInputEvent()
         if(NeedTurbo())
         {
             GenerateFrame();
+            SendFrame();
+            return;
+        }
+        if(std::chrono::duration_cast<std::chrono::milliseconds>(
+               clock::now() - mLastSendTime).count() >= 10)
+        {
             SendFrame();
         }
         return;

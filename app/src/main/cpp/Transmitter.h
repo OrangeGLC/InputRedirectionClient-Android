@@ -71,6 +71,7 @@ private:
     bool mTurboMark[MAX_N3DS_KEY_TURBO_INDEX];
     using clock = std::chrono::high_resolution_clock;
     typeof(clock::now()) mLastTurboTime;
+    typeof(clock::now()) mLastSendTime;
     Config mCfg;
     KEY_STATE mKeysState[MAX_INPUT_KEY_INDEX];
     AxisValue mJoystick[MAX_JOYSTICK_INDEX];
