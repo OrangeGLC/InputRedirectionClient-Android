@@ -36,12 +36,30 @@ android {
             signingConfig signingConfigs.release
         }
     }
+    splits {
+        abi {
+            enable true
+            reset()
+            include "arm64-v8a", "armeabi-v7a", "x86", "x86_64"
+            universalApk true
+        }
+    }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_11
         targetCompatibility JavaVersion.VERSION_11
     }
     buildFeatures {
         prefab true
+    }
+    applicationVariants.all { variant ->
+        variant.outputs.all { output ->
+            def abi = output.getFilter("ABI")
+            if (abi != null) {
+                output.outputFileName = "InputRedirectionClient-Android-v1.0-${abi}.apk"
+            } else {
+                output.outputFileName = "InputRedirectionClient-Android-v1.0.apk"
+            }
+        }
     }
     externalNativeBuild {
         cmake {
