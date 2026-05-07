@@ -18,9 +18,13 @@
     <string name="bt_txt_edit">Edit</string>
     <string name="scrctl_fail">Screen-off service not running.\n\nThe command has been copied to clipboard.\nInput to ADB shell and run it to enable screen-off.</string>
     <string name="bt_txt_about">About</string>
+    <string name="about_version">Version: %s</string>
+    <string name="update_title">New Version</string>
+    <string name="update_msg">Version %s is available. Download now?</string>
+    <string name="update_go">Download</string>
     <string name="about_title">About</string>
     <string name="about_msg"><![CDATA[
-    <b>手柄热点/IRCA V1.0</b>
+    <b>手柄热点/IRCA</b>
     <br>InputRedirectionClient-Android<br><br>
     Use Android device as a wireless gamepad for Nintendo 3DS.<br><br>
     This software is open source and free.<br><br>

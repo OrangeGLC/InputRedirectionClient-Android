@@ -19,9 +19,13 @@
     <string name="bt_txt_edit">修改</string>
     <string name="scrctl_fail">熄屏服务未启动。\n\n启动命令已复制到剪贴板，请在ADB shell 应用程序中执行。</string>
     <string name="bt_txt_about">关于</string>
+    <string name="about_version">版本：%s</string>
+    <string name="update_title">发现新版本</string>
+    <string name="update_msg">发现新版本 %s，是否前往下载？</string>
+    <string name="update_go">前往下载</string>
     <string name="about_title">关于</string>
     <string name="about_msg"><![CDATA[
-    <b>手柄热点/IRCA V1.0</b>
+    <b>手柄热点/IRCA</b>
     <br>InputRedirectionClient-Android<br><br>
     将 Android 设备用作Nintendo 3DS游戏主机的无线手柄连接器。<br><br>
     本软件开源、免费。<br><br>

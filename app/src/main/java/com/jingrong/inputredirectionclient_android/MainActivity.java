@@ -5,12 +5,15 @@ import android.app.Activity;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.net.Uri;
 import android.net.wifi.WifiManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.PowerManager;
 import android.text.Html;
+import java.util.Locale;
 import android.text.method.LinkMovementMethod;
 import android.text.InputType;
 import android.util.Log;
@@ -32,13 +35,19 @@ import androidx.appcompat.app.AlertDialog;
 
 import com.google.androidgamesdk.GameActivity;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+
+import org.json.JSONObject;
 
 public class MainActivity extends GameActivity {
     static {
@@ -307,6 +316,7 @@ public class MainActivity extends GameActivity {
         etPowerOff.setClickable(false);
 
         unzipFiles();
+        checkUpdate();
     }
 
     @Override
@@ -325,13 +335,15 @@ public class MainActivity extends GameActivity {
     }
 
     private void showAbout() {
+        String aboutMsg = getString(R.string.about_msg)
+                + "<br><br>" + getString(R.string.about_version, BuildConfig.VERSION_NAME);
         AlertDialog dlg = new AlertDialog.Builder(this)
                 .setTitle(getString(R.string.about_title))
-                .setMessage(Html.fromHtml(getString(R.string.about_msg)))
+                .setMessage(Html.fromHtml(aboutMsg))
                 .setPositiveButton(android.R.string.ok, null)
                 .show();
-        TextView msg = dlg.findViewById(android.R.id.message);
-        if (msg != null) msg.setMovementMethod(LinkMovementMethod.getInstance());
+        TextView tv = dlg.findViewById(android.R.id.message);
+        if (tv != null) tv.setMovementMethod(LinkMovementMethod.getInstance());
     }
 
     private void unzipFiles() {
@@ -495,4 +507,47 @@ public class MainActivity extends GameActivity {
     private EditText etPowerOff;
     private WifiManager.WifiLock wifiLock;
     private PowerManager.WakeLock wakeLock;
+
+    private void checkUpdate() {
+        new Thread(() -> {
+            try {
+                boolean isZh = Locale.getDefault().getLanguage().equals(
+                        new Locale("zh").getLanguage());
+                String api = isZh
+                        ? "https://gitee.com/api/v5/repos/rojing/InputRedirectionClient-Android/releases/latest"
+                        : "https://api.github.com/repos/OrangeGLC/InputRedirectionClient-Android/releases/latest";
+                HttpURLConnection conn = (HttpURLConnection) new URL(api).openConnection();
+                conn.setConnectTimeout(5000);
+                conn.setReadTimeout(5000);
+                if (conn.getResponseCode() != 200) return;
+                BufferedReader reader = new BufferedReader(
+                        new InputStreamReader(conn.getInputStream()));
+                StringBuilder sb = new StringBuilder();
+                String line;
+                while ((line = reader.readLine()) != null) sb.append(line);
+                reader.close();
+                JSONObject json = new JSONObject(sb.toString());
+                String latest = json.getString("tag_name").replaceFirst("^v", "");
+                if (!latest.equals(BuildConfig.VERSION_NAME)) {
+                    String releaseUrl = isZh
+                            ? "https://gitee.com/rojing/InputRedirectionClient-Android/releases/tag/v" + latest
+                            : json.getString("html_url");
+                    runOnUiThread(() -> showUpdateDialog(latest, releaseUrl));
+                }
+            } catch (Exception e) {
+                Log.w("IRC", "Update check failed", e);
+            }
+        }).start();
+    }
+
+    private void showUpdateDialog(String latest, String url) {
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.update_title)
+                .setMessage(getString(R.string.update_msg, latest))
+                .setPositiveButton(R.string.update_go, (d, w) -> {
+                    startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
 }

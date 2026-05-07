@@ -2,6 +2,12 @@ plugins {
     alias(libs.plugins.android.application)
 }
 
+def keystoreProperties = new Properties()
+def keystorePropsFile = rootProject.file("local.properties")
+if (keystorePropsFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropsFile))
+}
+
 android {
     namespace 'com.jingrong.inputredirectionclient_android'
     compileSdk 36
@@ -10,8 +16,8 @@ android {
         applicationId "com.jingrong.inputredirectionclient_android"
         minSdk 30
         targetSdk 36
-        versionCode 1
-        versionName "1.0"
+        versionCode 2
+        versionName "1.1"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         externalNativeBuild {
@@ -23,10 +29,10 @@ android {
 
     signingConfigs {
         release {
-            storeFile file('release.jks')
-            storePassword 'android'
-            keyAlias 'release'
-            keyPassword 'android'
+            storeFile rootProject.file(keystoreProperties.getProperty("KEYSTORE_PATH", "app/release.jks"))
+            storePassword keystoreProperties.getProperty("KEYSTORE_STORE_PASSWORD", "")
+            keyAlias keystoreProperties.getProperty("KEYSTORE_KEY_ALIAS", "release")
+            keyPassword keystoreProperties.getProperty("KEYSTORE_KEY_PASSWORD", "")
         }
     }
     buildTypes {
@@ -50,14 +56,15 @@ android {
     }
     buildFeatures {
         prefab true
+        buildConfig true
     }
     applicationVariants.all { variant ->
         variant.outputs.all { output ->
             def abi = output.getFilter("ABI")
             if (abi != null) {
-                output.outputFileName = "InputRedirectionClient-Android-v1.0-${abi}.apk"
+                output.outputFileName = "InputRedirectionClient-Android-v1.1-${abi}.apk"
             } else {
-                output.outputFileName = "InputRedirectionClient-Android-v1.0.apk"
+                output.outputFileName = "InputRedirectionClient-Android-v1.1.apk"
             }
         }
     }
