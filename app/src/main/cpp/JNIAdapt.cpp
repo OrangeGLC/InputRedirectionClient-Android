@@ -222,6 +222,23 @@ Java_com_jingrong_inputredirectionclient_1android_MainActivity_setTurboInterval(
 }
 
 extern "C"
+JNIEXPORT void JNICALL
+Java_com_jingrong_inputredirectionclient_1android_MainActivity_setTurboMode(
+        JNIEnv *env, jobject thiz, jint index, jboolean fullAuto)
+{
+    Transmitter::GetInstance()->SetTurboMode(index, fullAuto);
+    Transmitter::GetInstance()->SaveConfig();
+}
+
+extern "C"
+JNIEXPORT jboolean JNICALL
+Java_com_jingrong_inputredirectionclient_1android_MainActivity_getTurboMode(
+        JNIEnv *env, jobject thiz, jint index)
+{
+    return Transmitter::GetInstance()->GetTurboMode(index);
+}
+
+extern "C"
 JNIEXPORT jint JNICALL
 Java_com_jingrong_inputredirectionclient_1android_MainActivity_getTurboInterval(
         JNIEnv *env, jobject thiz)

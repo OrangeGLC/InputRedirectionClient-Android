@@ -23,6 +23,7 @@
     <string name="update_title">发现新版本</string>
     <string name="update_msg">发现新版本 %s，是否前往下载？</string>
     <string name="update_go">前往下载</string>
+    <string name="turbo_mode_short">全自动</string>
     <string name="about_title">关于</string>
     <string name="about_msg"><![CDATA[
     <b>手柄热点/IRCA</b>

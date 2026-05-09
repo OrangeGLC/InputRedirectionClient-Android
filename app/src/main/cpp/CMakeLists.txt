@@ -8,6 +8,7 @@ add_library(inputredirectionclient_android SHARED
         JNIAdapt.cpp
         main.cpp
         Transmitter.cpp
+        cJSON.c
 )
 
 # Searches for a package provided by the game activity dependency

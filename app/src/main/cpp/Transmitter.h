@@ -10,6 +10,8 @@
 #include "Config.h"
 typedef unsigned int u32;
 
+struct cJSON;
+
 typedef struct FrameData
 {
     u32 hidPad = 0xfff;
@@ -43,6 +45,7 @@ public:
     void KeyEventToFrameData();
     void MotionEventToFrameData();
     void OutputKeyIndexToFrameData(N3DS_KEY_INDEX outIndex);
+    void ParseJsonConfig(cJSON *root);
     void GenerateFrame();
     RetVal GetCfgIP(char *buffer, size_t size);
     void SetCfgIP(const char* ip);
@@ -54,6 +57,8 @@ public:
     bool GetTurbo(N3DS_KEY_INDEX index);
     void SetTurboInterval(u32 ms);
     u32 GetTurboInterval();
+    void SetTurboMode(int index, bool fullAuto);
+    bool GetTurboMode(int index);
     void SetHomeMap(bool flg);
     bool GetHomeMap();
     void SetPowerMap(bool flg);
@@ -69,8 +74,9 @@ private:
     std::string mConfigPath;
     bool mHasFocus, mIsVisible, mHasWindow;
     bool mTurboMark[MAX_N3DS_KEY_TURBO_INDEX];
+    bool mTurboActive[MAX_N3DS_KEY_TURBO_INDEX];
     using clock = std::chrono::high_resolution_clock;
-    typeof(clock::now()) mLastTurboTime;
+    typeof(clock::now()) mLastTurboTime[MAX_N3DS_KEY_TURBO_INDEX];
     typeof(clock::now()) mLastSendTime;
     Config mCfg;
     KEY_STATE mKeysState[MAX_INPUT_KEY_INDEX];

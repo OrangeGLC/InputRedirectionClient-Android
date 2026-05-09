@@ -21,8 +21,10 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.KeyEvent;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.SeekBar;
@@ -71,6 +73,8 @@ public class MainActivity extends GameActivity {
     public native boolean getPowerOffMapEnable();
     public native void setTurboInterval(int ms);
     public native int getTurboInterval();
+    public native void setTurboMode(int index, boolean fullAuto);
+    public native boolean getTurboMode(int index);
     public void updateUI()
     {
         runOnUiThread(()-> {
@@ -79,14 +83,7 @@ public class MainActivity extends GameActivity {
             btSaveIP.setText(R.string.bt_txt_edit);
             swInvertAB.setChecked(getInvertAB());
             swInvertXY.setChecked(getInvertXY());
-            swTurboA.setChecked(getTurbo(0));
-            swTurboB.setChecked(getTurbo(1));
-            swTurboX.setChecked(getTurbo(2));
-            swTurboY.setChecked(getTurbo(3));
-            swTurboL.setChecked(getTurbo(4));
-            swTurboR.setChecked(getTurbo(5));
-            swTurboZL.setChecked(getTurbo(6));
-            swTurboZR.setChecked(getTurbo(7));
+            updateTurboButtons();
             swHomeMap.setChecked(getHomeMapEnable());
             swPowerMap.setChecked(getPowerMapEnable());
             swPowerOffMap.setChecked(getPowerOffMapEnable());
@@ -140,16 +137,26 @@ public class MainActivity extends GameActivity {
         swTurboB = findViewById(R.id.switch_turbo_B);
         swTurboX = findViewById(R.id.switch_turbo_X);
         swTurboY = findViewById(R.id.switch_turbo_Y);
-        swTurboR = findViewById(R.id.switch_turbo_R);
         swTurboL = findViewById(R.id.switch_turbo_L);
-        swTurboZR = findViewById(R.id.switch_turbo_ZR);
+        swTurboR = findViewById(R.id.switch_turbo_R);
         swTurboZL = findViewById(R.id.switch_turbo_ZL);
+        swTurboZR = findViewById(R.id.switch_turbo_ZR);
+        cbTurboModeA = findViewById(R.id.cb_turbo_mode_A);
+        cbTurboModeB = findViewById(R.id.cb_turbo_mode_B);
+        cbTurboModeX = findViewById(R.id.cb_turbo_mode_X);
+        cbTurboModeY = findViewById(R.id.cb_turbo_mode_Y);
+        cbTurboModeL = findViewById(R.id.cb_turbo_mode_L);
+        cbTurboModeR = findViewById(R.id.cb_turbo_mode_R);
+        cbTurboModeZL = findViewById(R.id.cb_turbo_mode_ZL);
+        cbTurboModeZR = findViewById(R.id.cb_turbo_mode_ZR);
         swHomeMap = findViewById(R.id.switch_home);
         swPowerMap = findViewById(R.id.switch_power);
         swPowerOffMap = findViewById(R.id.switch_shut);
         etHome = findViewById(R.id.et_home);
         etPower = findViewById(R.id.et_power);
         etPowerOff = findViewById(R.id.et_shut);
+
+        disableFocus(findViewById(android.R.id.content));
 
         btSaveIP.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -177,7 +184,7 @@ public class MainActivity extends GameActivity {
             @Override
             public void onClick(View view) {
                 for (int i = 0; i < 8; i++) {
-                    setTurbo(i,false);
+                    setTurbo(i, false);
                 }
                 updateUI();
             }
@@ -214,69 +221,7 @@ public class MainActivity extends GameActivity {
             }
         });
 
-        swTurboA.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-            @Override
-            public void onCheckedChanged(@NonNull CompoundButton compoundButton, boolean b)
-            {
-                setTurbo(0, b);
-            }
-        });
-
-        swTurboB.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-            @Override
-            public void onCheckedChanged(@NonNull CompoundButton compoundButton, boolean b)
-            {
-                setTurbo(1, b);
-            }
-        });
-
-        swTurboX.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-            @Override
-            public void onCheckedChanged(@NonNull CompoundButton compoundButton, boolean b)
-            {
-                setTurbo(2, b);
-            }
-        });
-
-        swTurboY.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-            @Override
-            public void onCheckedChanged(@NonNull CompoundButton compoundButton, boolean b)
-            {
-                setTurbo(3, b);
-            }
-        });
-
-        swTurboL.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-            @Override
-            public void onCheckedChanged(@NonNull CompoundButton compoundButton, boolean b)
-            {
-                setTurbo(4, b);
-            }
-        });
-
-        swTurboR.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-            @Override
-            public void onCheckedChanged(@NonNull CompoundButton compoundButton, boolean b)
-            {
-                setTurbo(5, b);
-            }
-        });
-
-        swTurboZL.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-            @Override
-            public void onCheckedChanged(@NonNull CompoundButton compoundButton, boolean b)
-            {
-                setTurbo(6, b);
-            }
-        });
-
-        swTurboZR.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-            @Override
-            public void onCheckedChanged(@NonNull CompoundButton compoundButton, boolean b)
-            {
-                setTurbo(7, b);
-            }
-        });
+        setupTurboButtons();
 
         swHomeMap.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
@@ -404,6 +349,16 @@ public class MainActivity extends GameActivity {
                 .show();
     }
 
+    private void disableFocus(View v) {
+        if (v instanceof ViewGroup) {
+            ViewGroup g = (ViewGroup) v;
+            for (int i = 0; i < g.getChildCount(); i++)
+                disableFocus(g.getChildAt(i));
+        }
+        if (v != null && v != etIP)
+            v.setFocusable(false);
+    }
+
     public void hideKeyboard(Activity activity) {
         View view = activity.getCurrentFocus();
         if (view != null) {
@@ -495,10 +450,18 @@ public class MainActivity extends GameActivity {
     private Switch swTurboB;
     private Switch swTurboX;
     private Switch swTurboY;
-    private Switch swTurboR;
     private Switch swTurboL;
+    private Switch swTurboR;
     private Switch swTurboZL;
     private Switch swTurboZR;
+    private CheckBox cbTurboModeA;
+    private CheckBox cbTurboModeB;
+    private CheckBox cbTurboModeX;
+    private CheckBox cbTurboModeY;
+    private CheckBox cbTurboModeL;
+    private CheckBox cbTurboModeR;
+    private CheckBox cbTurboModeZL;
+    private CheckBox cbTurboModeZR;
     private Switch swHomeMap;
     private Switch swPowerMap;
     private Switch swPowerOffMap;
@@ -507,6 +470,43 @@ public class MainActivity extends GameActivity {
     private EditText etPowerOff;
     private WifiManager.WifiLock wifiLock;
     private PowerManager.WakeLock wakeLock;
+
+    private boolean mUpdatingTurboUI;
+
+    private void setupTurboButtons() {
+        Switch[] sws = {swTurboA, swTurboB, swTurboX, swTurboY,
+                        swTurboL, swTurboR, swTurboZL, swTurboZR};
+        CheckBox[] cbs = {cbTurboModeA, cbTurboModeB, cbTurboModeX, cbTurboModeY,
+                          cbTurboModeL, cbTurboModeR, cbTurboModeZL, cbTurboModeZR};
+        for (int i = 0; i < 8; i++) {
+            final int idx = i;
+            sws[i].setOnCheckedChangeListener((btn, on) -> {
+                if (mUpdatingTurboUI) return;
+                setTurbo(idx, on);
+                cbs[idx].setEnabled(on);
+                if (!on) cbs[idx].setChecked(false);
+            });
+            cbs[i].setOnCheckedChangeListener((btn, on) -> {
+                if (mUpdatingTurboUI) return;
+                setTurboMode(idx, on);
+            });
+        }
+    }
+
+    private void updateTurboButtons() {
+        mUpdatingTurboUI = true;
+        Switch[] sws = {swTurboA, swTurboB, swTurboX, swTurboY,
+                        swTurboL, swTurboR, swTurboZL, swTurboZR};
+        CheckBox[] cbs = {cbTurboModeA, cbTurboModeB, cbTurboModeX, cbTurboModeY,
+                          cbTurboModeL, cbTurboModeR, cbTurboModeZL, cbTurboModeZR};
+        for (int i = 0; i < 8; i++) {
+            boolean on = getTurbo(i);
+            sws[i].setChecked(on);
+            cbs[i].setChecked(getTurboMode(i));
+            cbs[i].setEnabled(on);
+        }
+        mUpdatingTurboUI = false;
+    }
 
     private void checkUpdate() {
         new Thread(() -> {

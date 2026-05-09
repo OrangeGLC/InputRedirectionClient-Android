@@ -15,6 +15,7 @@
 #include <chrono>
 #include "JNIAdapt.h"
 #include "AndroidOut.h"
+#include "cJSON.h"
 
 #define CPAD_BOUND          0x5d0
 #define CPP_BOUND           0x7f
@@ -53,6 +54,8 @@ Transmitter::Transmitter(struct android_app *app)
     for(auto i=0; i<MAX_N3DS_KEY_TURBO_INDEX; ++i)
     {
         mTurboMark[i] = false;
+        mTurboActive[i] = false;
+        mLastTurboTime[i] = clock::now();
     }
     for(auto i=0;i<MAX_JOYSTICK_INDEX;++i)
     {
@@ -91,7 +94,6 @@ void Transmitter::DestroyInstance()
 
 void Transmitter::SetDefaultConfigValue()
 {
-    mCfg.cfgSize = sizeof(mCfg);
     strncpy(mCfg.ip, "192.168.100.100", CONFIG_IP_MAX_LEN - 1);
     mCfg.ip[CONFIG_IP_MAX_LEN - 1] = '\0';
     mCfg.gamepadCfg.deadZone[JOYSTICK_L] = 0.05f;
@@ -102,7 +104,8 @@ void Transmitter::SetDefaultConfigValue()
     mCfg.gamepadCfg.mapPower = false;
     mCfg.gamepadCfg.mapShut = false;
     mCfg.gamepadCfg.turboIntervalMs = 60;
-    mCfg.isFirstRun = true;
+    for(auto i=0; i<MAX_N3DS_KEY_TURBO_INDEX; ++i)
+        mCfg.gamepadCfg.turboMode[i] = TURBO_MODE_SEMI;
     SetDefaultKeyMapValue();
 }
 void Transmitter::SetDefaultKeyMapValue()
@@ -195,74 +198,147 @@ void Transmitter::SetDefaultKeyMapValue()
     }
 
 }
+void Transmitter::ParseJsonConfig(cJSON *root)
+{
+    cJSON *ip = cJSON_GetObjectItem(root, "ip");
+    if(cJSON_IsString(ip) && ip->valuestring)
+        strncpy(mCfg.ip, ip->valuestring, CONFIG_IP_MAX_LEN - 1);
+
+    cJSON *iab = cJSON_GetObjectItem(root, "invertAB");
+    if(cJSON_IsBool(iab)) SetInvertAB(cJSON_IsTrue(iab));
+
+    cJSON *ixy = cJSON_GetObjectItem(root, "invertXY");
+    if(cJSON_IsBool(ixy)) SetInvertXY(cJSON_IsTrue(ixy));
+
+    cJSON *mh = cJSON_GetObjectItem(root, "mapHome");
+    if(cJSON_IsBool(mh)) SetHomeMap(cJSON_IsTrue(mh));
+
+    cJSON *mp = cJSON_GetObjectItem(root, "mapPower");
+    if(cJSON_IsBool(mp)) SetPowerMap(cJSON_IsTrue(mp));
+
+    cJSON *ms = cJSON_GetObjectItem(root, "mapShut");
+    if(cJSON_IsBool(ms)) SetPowerOffMap(cJSON_IsTrue(ms));
+
+    cJSON *ti = cJSON_GetObjectItem(root, "turboIntervalMs");
+    if(cJSON_IsNumber(ti)) SetTurboInterval((u32)ti->valueint);
+
+    cJSON *turboKeys = cJSON_GetObjectItem(root, "turboKeys");
+    if(cJSON_IsObject(turboKeys))
+    {
+        for(int i = 0; i < MAX_N3DS_KEY_TURBO_INDEX; ++i)
+        {
+            cJSON *keyObj = cJSON_GetObjectItem(turboKeys, gN3DsKeyTab[i].name);
+            if(!keyObj) continue;
+            cJSON *enb = cJSON_GetObjectItem(keyObj, "enable");
+            if(cJSON_IsBool(enb))
+                SetTurbo(static_cast<N3DS_KEY_INDEX>(i), cJSON_IsTrue(enb));
+            cJSON *fa = cJSON_GetObjectItem(keyObj, "fullAuto");
+            if(cJSON_IsBool(fa))
+                SetTurboMode(i, cJSON_IsTrue(fa));
+        }
+    }
+}
+
 void Transmitter::LoadConfig()
 {
-    ALOGD("Config file name: %s",mConfigPath.c_str());
+    ALOGD("%s: loading config.", __FUNCTION__);
     SetDefaultConfigValue();
 
-    auto fd = open(mConfigPath.c_str(), O_RDONLY);
-    if(-1 == fd)
-    {
-        ALOGD("No config file, using defaults. %s", strerror(errno));
-        SaveConfig();
-        return;
-    }
+    std::string jsonPath = gCfgPath + "/config.json";
 
-    u32 savedCfgSize = 0;
-    ssize_t n = read(fd, &savedCfgSize, sizeof(savedCfgSize));
-    if(n != sizeof(savedCfgSize))
+    /* Try JSON config */
+    auto fd = open(jsonPath.c_str(), O_RDONLY);
+    if(fd >= 0)
     {
-        ALOGE("Failed to read config size (read %zd bytes). %s", n, strerror(errno));
+        off_t sz = lseek(fd, 0, SEEK_END);
+        if(sz > 0 && sz < 65536)
+        {
+            lseek(fd, 0, SEEK_SET);
+            char *buf = (char*)malloc((size_t)sz + 1);
+            if(buf)
+            {
+                ssize_t n = read(fd, buf, sz);
+                if(n == sz)
+                {
+                    buf[sz] = '\0';
+                    cJSON *root = cJSON_Parse(buf);
+                    if(root)
+                    {
+                        ParseJsonConfig(root);
+                        cJSON_Delete(root);
+                        free(buf);
+                        close(fd);
+                        mCfg.ip[CONFIG_IP_MAX_LEN - 1] = '\0';
+                        ALOGD("%s: OK (json), ip=%s", __FUNCTION__, mCfg.ip);
+                        return;
+                    }
+                    ALOGE("Failed to parse JSON config.");
+                    cJSON_Delete(root);
+                }
+                free(buf);
+            }
+        }
         close(fd);
-        SaveConfig();
-        return;
+        ALOGE("Failed to read JSON config, trying legacy binary.");
     }
 
-    if(savedCfgSize != sizeof(mCfg))
-    {
-        ALOGW("Config size mismatch: saved=%u current=%zu. Resetting to defaults.",
-              savedCfgSize, sizeof(mCfg));
-        close(fd);
-        SaveConfig();
-        return;
-    }
-
-    n = read(fd, &mCfg.isFirstRun, sizeof(mCfg)-sizeof(mCfg.cfgSize));
-    if(n != (ssize_t)(sizeof(mCfg)-sizeof(mCfg.cfgSize)))
-    {
-        ALOGE("Failed to read config body (read %zd bytes). %s", n, strerror(errno));
-        close(fd);
-        SetDefaultConfigValue();
-        SaveConfig();
-        return;
-    }
-
-    close(fd);
-    mCfg.cfgSize = sizeof(mCfg);
-    mCfg.ip[CONFIG_IP_MAX_LEN - 1] = '\0';
-    ALOGD("%s: OK, ip=%s", __FUNCTION__, mCfg.ip);
+    /* Save defaults on first run */
+    ALOGD("No config file, using defaults.");
+    SaveConfig();
 }
 
 Transmitter::RetVal Transmitter::SaveConfig()
 {
-    std::string tmpPath = mConfigPath + ".tmp";
-    auto fd = open(tmpPath.c_str(), O_WRONLY|O_CREAT|O_TRUNC, 0644);
-    if(-1 == fd)
+    std::string jsonPath = gCfgPath + "/config.json";
+    std::string tmpPath = jsonPath + ".tmp";
+
+    cJSON *root = cJSON_CreateObject();
+    cJSON_AddNumberToObject(root, "version", CONFIG_JSON_VERSION);
+    cJSON_AddStringToObject(root, "ip", mCfg.ip);
+    cJSON_AddBoolToObject(root, "invertAB", mCfg.gamepadCfg.invertAB);
+    cJSON_AddBoolToObject(root, "invertXY", mCfg.gamepadCfg.invertXY);
+    cJSON_AddBoolToObject(root, "mapHome", mCfg.gamepadCfg.mapHome);
+    cJSON_AddBoolToObject(root, "mapPower", mCfg.gamepadCfg.mapPower);
+    cJSON_AddBoolToObject(root, "mapShut", mCfg.gamepadCfg.mapShut);
+    cJSON_AddNumberToObject(root, "turboIntervalMs", mCfg.gamepadCfg.turboIntervalMs);
+
+    cJSON *turboKeys = cJSON_CreateObject();
+    for(int i = 0; i < MAX_N3DS_KEY_TURBO_INDEX; ++i)
+    {
+        cJSON *keyObj = cJSON_CreateObject();
+        cJSON_AddBoolToObject(keyObj, "enable",
+            mCfg.gamepadCfg.turbo[i] == TURBO_ENABLE);
+        cJSON_AddBoolToObject(keyObj, "fullAuto",
+            mCfg.gamepadCfg.turboMode[i] == TURBO_MODE_FULL);
+        cJSON_AddItemToObject(turboKeys, gN3DsKeyTab[i].name, keyObj);
+    }
+    cJSON_AddItemToObject(root, "turboKeys", turboKeys);
+
+    char *jsonStr = cJSON_Print(root);
+    cJSON_Delete(root);
+    if(!jsonStr) return NOK;
+
+    auto fd = open(tmpPath.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    if(fd < 0)
     {
         ALOGE("Failed to open temp config file. %s", strerror(errno));
+        cJSON_free(jsonStr);
         return NOK;
     }
 
-    ssize_t n = write(fd, &mCfg, sizeof(mCfg));
+    ssize_t len = (ssize_t)strlen(jsonStr);
+    ssize_t n = write(fd, jsonStr, len);
     close(fd);
-    if(n != sizeof(mCfg))
+    cJSON_free(jsonStr);
+
+    if(n != len)
     {
-        ALOGE("Failed to write config (wrote %zd of %zu bytes). %s", n, sizeof(mCfg), strerror(errno));
+        ALOGE("Failed to write config (wrote %zd of %zd bytes). %s", n, len, strerror(errno));
         unlink(tmpPath.c_str());
         return NOK;
     }
 
-    if(rename(tmpPath.c_str(), mConfigPath.c_str()) != 0)
+    if(rename(tmpPath.c_str(), jsonPath.c_str()) != 0)
     {
         ALOGE("Failed to rename temp config. %s", strerror(errno));
         unlink(tmpPath.c_str());
@@ -340,19 +416,41 @@ INPUT_KEY_INDEX Transmitter::GetInputKeyIndex(GameActivityKeyEvent* keyEvent)
 {
     for(auto i=0; i<MAX_INPUT_KEY_INDEX; ++i)
     {
-        if(keyEvent->keyCode == gInputKeyTab[i].keycode ||
-                keyEvent->scanCode == gInputKeyTab[i].keycode)
-            return static_cast<INPUT_KEY_INDEX>(i);
+        if(gInputKeyTab[i].isScanCode)
+        {
+            if(keyEvent->scanCode == gInputKeyTab[i].keycode)
+                return static_cast<INPUT_KEY_INDEX>(i);
+        }
+        else
+        {
+            if(keyEvent->keyCode == gInputKeyTab[i].keycode)
+                return static_cast<INPUT_KEY_INDEX>(i);
+        }
     }
     return INPUT_KEY_INDEX_INVALID;
 }
 
 void Transmitter::KeyEventToFrameData()
 {
+    /* Full-auto: apply virtual key states */
+    for(auto i=0; i<MAX_N3DS_KEY_TURBO_INDEX; ++i)
+    {
+        if(mCfg.gamepadCfg.turboMode[i] == TURBO_MODE_FULL &&
+            mTurboActive[i] && mCfg.gamepadCfg.turbo[i] == TURBO_ENABLE)
+            OutputKeyIndexToFrameData(static_cast<N3DS_KEY_INDEX>(i));
+    }
+
     for(auto i=0; i<MAX_INPUT_KEY_INDEX; ++i)
     {
         if(mKeysState[i]==KEY_STATE_DOWN)
-            OutputKeyIndexToFrameData(mCfg.gamepadCfg.targetKeyIndex[i]);
+        {
+            N3DS_KEY_INDEX out = mCfg.gamepadCfg.targetKeyIndex[i];
+            if(out < MAX_N3DS_KEY_TURBO_INDEX &&
+                mCfg.gamepadCfg.turboMode[out] == TURBO_MODE_FULL &&
+                mTurboActive[out])
+                continue;
+            OutputKeyIndexToFrameData(out);
+        }
     }
     /* Check if need power off (L3 + R3 press down meanwhile) */
     if(mKeysState[INPUT_KEY_INDEX_L3] == KEY_STATE_DOWN &&
@@ -367,13 +465,19 @@ void Transmitter::OutputKeyIndexToFrameData(N3DS_KEY_INDEX outIndex)
 
     if(outIndex == N3DS_KEY_INDEX_HOME && !mCfg.gamepadCfg.mapHome) return;
     if(outIndex < MAX_N3DS_KEY_TURBO_INDEX &&
-        mTurboMark[outIndex] &&
         mCfg.gamepadCfg.turbo[outIndex] == TURBO_ENABLE)
     {
-        ALOGD("Send empty frame");
-        mTurboMark[outIndex] = false;
-        return;
+        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+            clock::now() - mLastTurboTime[outIndex]).count();
+        if(elapsed >= (int64_t)mCfg.gamepadCfg.turboIntervalMs)
+        {
+            mTurboMark[outIndex] = !mTurboMark[outIndex];
+            mLastTurboTime[outIndex] = clock::now();
+        }
+        if(mTurboMark[outIndex])
+            return;
     }
+
     switch(gN3DsKeyTab[outIndex].obj)
     {
         case FIRST:
@@ -388,13 +492,6 @@ void Transmitter::OutputKeyIndexToFrameData(N3DS_KEY_INDEX outIndex)
         default:
             break;
     }
-    if(outIndex < MAX_N3DS_KEY_TURBO_INDEX &&
-        mCfg.gamepadCfg.turbo[outIndex] == TURBO_ENABLE)
-    {
-        ALOGD("Send normal frame");
-        mLastTurboTime = clock::now();
-        mTurboMark[outIndex] = true;
-    }
 }
 
 void Transmitter::HandleKeyEvent(GameActivityKeyEvent* keyEvent)
@@ -406,18 +503,28 @@ void Transmitter::HandleKeyEvent(GameActivityKeyEvent* keyEvent)
     }
     if (keyEvent->source & AINPUT_SOURCE_GAMEPAD)
     {
-        ALOGD("keyEvent = 0x%p, keysource = %d, KeyScanCode = %d, KeyCode %d action=%s",keyEvent,
-              keyEvent->source,
+        ALOGD("keyEvent: keyCode=%d scanCode=%d action=%s", keyEvent->keyCode,
               keyEvent->scanCode,
-              keyEvent->keyCode,
              (keyEvent->action == AKEY_EVENT_ACTION_DOWN) ? "DOWN" : "UP");
         /* Get input index by KEYCODE */
         auto inIndex = GetInputKeyIndex(keyEvent);
         if(INPUT_KEY_INDEX_INVALID == inIndex)
         {
-            ALOGD("Unknown key event.");
+            ALOGD("Unknown key: keyCode=%d scanCode=%d", keyEvent->keyCode, keyEvent->scanCode);
             return;
         }
+
+        /* Full-auto mode: turbo keys toggle on press */
+        N3DS_KEY_INDEX outIndex = mCfg.gamepadCfg.targetKeyIndex[inIndex];
+        if(outIndex < MAX_N3DS_KEY_TURBO_INDEX &&
+            mCfg.gamepadCfg.turbo[outIndex] == TURBO_ENABLE &&
+            mCfg.gamepadCfg.turboMode[outIndex] == TURBO_MODE_FULL)
+        {
+            if(keyEvent->action == AKEY_EVENT_ACTION_DOWN && keyEvent->repeatCount == 0)
+                mTurboActive[outIndex] = !mTurboActive[outIndex];
+            return;
+        }
+
         mKeysState[inIndex] = keyEvent->action == AKEY_EVENT_ACTION_DOWN?KEY_STATE_DOWN:KEY_STATE_UP;
     }
 }
@@ -487,8 +594,32 @@ void Transmitter::HandleMotionEvent(GameActivityMotionEvent* motionEvent)
                 mKeysState[INPUT_KEY_INDEX_UP] = KEY_STATE_UP;
                 mKeysState[INPUT_KEY_INDEX_DOWN] = KEY_STATE_UP;
         }
+        /* Analog triggers on Xbox: detect rising edge for full-auto turbo toggle */
+        bool ltWasDown = (mKeysState[INPUT_KEY_INDEX_LT] == KEY_STATE_DOWN);
+        bool rtWasDown = (mKeysState[INPUT_KEY_INDEX_RT] == KEY_STATE_DOWN);
+
         mKeysState[INPUT_KEY_INDEX_LT] = lt>0?KEY_STATE_DOWN:KEY_STATE_UP;
         mKeysState[INPUT_KEY_INDEX_RT] = rt>0?KEY_STATE_DOWN:KEY_STATE_UP;
+
+        N3DS_KEY_INDEX ltOut = mCfg.gamepadCfg.targetKeyIndex[INPUT_KEY_INDEX_LT];
+        N3DS_KEY_INDEX rtOut = mCfg.gamepadCfg.targetKeyIndex[INPUT_KEY_INDEX_RT];
+
+        auto handleAnalogTrigger = [this](N3DS_KEY_INDEX out, bool wasDown, int val) -> bool {
+            if(out < MAX_N3DS_KEY_TURBO_INDEX &&
+               mCfg.gamepadCfg.turbo[out] == TURBO_ENABLE &&
+               mCfg.gamepadCfg.turboMode[out] == TURBO_MODE_FULL)
+            {
+                if(!wasDown && val > 0)
+                    mTurboActive[out] = !mTurboActive[out];
+                return true; // full-auto active, suppress mKeysState
+            }
+            return false;
+        };
+
+        if(handleAnalogTrigger(ltOut, ltWasDown, lt))
+            mKeysState[INPUT_KEY_INDEX_LT] = KEY_STATE_UP;
+        if(handleAnalogTrigger(rtOut, rtWasDown, rt))
+            mKeysState[INPUT_KEY_INDEX_RT] = KEY_STATE_UP;
     }
 }
 
@@ -648,7 +779,10 @@ void Transmitter::SetTurbo(N3DS_KEY_INDEX index, bool flg)
         if(flg)
             mCfg.gamepadCfg.turbo[index] = TURBO_ENABLE;
         else
+        {
             mCfg.gamepadCfg.turbo[index] = TURBO_DISABLE;
+            mTurboActive[index] = false;
+        }
     }
 }
 
@@ -666,6 +800,19 @@ void Transmitter::SetTurboInterval(u32 ms)
 u32 Transmitter::GetTurboInterval()
 {
     return mCfg.gamepadCfg.turboIntervalMs;
+}
+
+void Transmitter::SetTurboMode(int index, bool fullAuto)
+{
+    if(index < 0 || index >= MAX_N3DS_KEY_TURBO_INDEX) return;
+    mCfg.gamepadCfg.turboMode[index] = fullAuto ? TURBO_MODE_FULL : TURBO_MODE_SEMI;
+    if(!fullAuto) mTurboActive[index] = false;
+}
+
+bool Transmitter::GetTurboMode(int index)
+{
+    if(index < 0 || index >= MAX_N3DS_KEY_TURBO_INDEX) return false;
+    return mCfg.gamepadCfg.turboMode[index] == TURBO_MODE_FULL;
 }
 
 void Transmitter::SetHomeMap(bool flg)
@@ -700,17 +847,14 @@ bool Transmitter::GetPowerOffMap()
 
 bool Transmitter::NeedTurbo()
 {
-    if(std::chrono::duration_cast<std::chrono::milliseconds>(
-           clock::now() - mLastTurboTime).count() < (int64_t)mCfg.gamepadCfg.turboIntervalMs)
-        return false;
     for(auto i=0; i<MAX_INPUT_KEY_INDEX; ++i)
     {
-        if(mKeysState[i] == KEY_STATE_DOWN &&
-            mCfg.gamepadCfg.turbo[mCfg.gamepadCfg.targetKeyIndex[i]] == TURBO_ENABLE)
-        {
-            mLastTurboTime = clock::now();
-            return true;
-        }
+        N3DS_KEY_INDEX out = mCfg.gamepadCfg.targetKeyIndex[i];
+        if(out >= MAX_N3DS_KEY_TURBO_INDEX) continue;
+        if(mCfg.gamepadCfg.turbo[out] != TURBO_ENABLE) continue;
+
+        if(mKeysState[i] == KEY_STATE_DOWN) return true;
+        if(mCfg.gamepadCfg.turboMode[out] == TURBO_MODE_FULL && mTurboActive[out]) return true;
     }
     return false;
 }

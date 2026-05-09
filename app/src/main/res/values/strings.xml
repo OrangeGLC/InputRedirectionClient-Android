@@ -22,6 +22,7 @@
     <string name="update_title">New Version</string>
     <string name="update_msg">Version %s is available. Download now?</string>
     <string name="update_go">Download</string>
+    <string name="turbo_mode_short">Full</string>
     <string name="about_title">About</string>
     <string name="about_msg"><![CDATA[
     <b>手柄热点/IRCA</b>
