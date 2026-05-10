@@ -655,7 +655,7 @@ public class MainActivity extends GameActivity {
     private LinearLayout layoutCustomMode;
     private Switch swSwapSticks;
     private Switch swSwapSticksSimple;
-    private EditText[] mKeyMapEdits = new EditText[17];
+    private Button[] mKeyMapEdits = new Button[17];
     private int mCapturingN3dsIdx = -1;
     // Physical key names (matches gInputKeyTab order in Gamepad.h)
     private static final String[] INPUT_KEY_NAMES = {
