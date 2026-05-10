@@ -161,8 +161,11 @@ public class MainActivity extends GameActivity {
         // Custom mode layout
         layoutCustomMode.setVisibility(mode == 1 ? View.VISIBLE : View.GONE);
 
-        // Swap joysticks
-        swSwapSticks.setChecked(getSwapJoysticks());
+        // Swap joysticks (sync both switches, show correct one per mode)
+        boolean swap = getSwapJoysticks();
+        swSwapSticks.setChecked(swap);
+        swSwapSticks.setVisibility(mode == 1 ? View.VISIBLE : View.GONE);
+        swSwapSticksSimple.setChecked(swap);
 
         // Update custom mode key mapping entries
         if (mode == 1) {
@@ -256,6 +259,7 @@ public class MainActivity extends GameActivity {
         layoutSimpleMode = findViewById(R.id.layout_simple_mode);
         layoutCustomMode = findViewById(R.id.layout_custom_mode);
         swSwapSticks = findViewById(R.id.switch_swap_sticks);
+        swSwapSticksSimple = findViewById(R.id.switch_swap_sticks_simple);
 
         mKeyMapEdits[N3DS_KEY_INDEX_A] = findViewById(R.id.et_map_A);
         mKeyMapEdits[N3DS_KEY_INDEX_B] = findViewById(R.id.et_map_B);
@@ -375,11 +379,13 @@ public class MainActivity extends GameActivity {
             @Override public void onTabReselected(com.google.android.material.tabs.TabLayout.Tab tab) {}
         });
 
-        // Swap joysticks
-        swSwapSticks.setOnCheckedChangeListener((btn, on) -> {
+        // Swap joysticks (both simple and custom mode)
+        CompoundButton.OnCheckedChangeListener swapListener = (btn, on) -> {
             if (mUpdatingKeyMapUI) return;
             setSwapJoysticks(on);
-        });
+        };
+        swSwapSticks.setOnCheckedChangeListener(swapListener);
+        swSwapSticksSimple.setOnCheckedChangeListener(swapListener);
 
         // Key mapping entry click listeners (on EditText)
         for (int i = 0; i < mKeyMapEdits.length; i++) {
@@ -629,6 +635,7 @@ public class MainActivity extends GameActivity {
     private LinearLayout layoutSimpleMode;
     private LinearLayout layoutCustomMode;
     private Switch swSwapSticks;
+    private Switch swSwapSticksSimple;
     private EditText[] mKeyMapEdits = new EditText[17];
     private int mCapturingN3dsIdx = -1;
     // Physical key names (matches gInputKeyTab order in Gamepad.h)

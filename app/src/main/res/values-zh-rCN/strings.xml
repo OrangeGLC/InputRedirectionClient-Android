@@ -5,7 +5,7 @@
     <string name="title_keymap">按键映射</string>
     <string name="mode_simple">简单</string>
     <string name="mode_custom">自定义</string>
-    <string name="swap_sticks">交换左右摇杆</string>
+    <string name="swap_sticks">左摇杆⇌右摇杆</string>
     <string name="capture_hint">请按下手柄按键</string>
     <string name="conflict_title">按键冲突</string>
     <string name="conflict_msg">%1$s 已映射到3DS的 %2$s 按键，继续设置将为3DS的 %2$s 按键修改为其他不冲突的按键，是否继续？</string>
