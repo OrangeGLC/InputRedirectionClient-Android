@@ -85,3 +85,60 @@ dependencies {
     androidTestImplementation libs.ext.junit
     androidTestImplementation libs.espresso.core
 }
+
+// Auto-build ScrCtl.dex from scrctl package classes after Java compilation
+afterEvaluate {
+    task buildScrCtlDex {
+        doLast {
+            def sdkDir = android.sdkDirectory
+            def buildToolsVer = android.buildToolsVersion
+            def d8 = "${sdkDir}/build-tools/${buildToolsVer}/d8"
+            def androidJar = "${sdkDir}/platforms/android-${android.compileSdk}/android.jar"
+
+            def classesParent = file("${buildDir}/intermediates/javac/release/compileReleaseJavaWithJavac/classes")
+            if (!classesParent.exists()) {
+                classesParent = file("${buildDir}/intermediates/javac/debug/compileDebugJavaWithJavac/classes")
+            }
+            def scrctlClasses = file("${classesParent}/com/jingrong/scrctl")
+
+            if (!scrctlClasses.exists()) {
+                logger.warn("ScrCtl classes not found at ${scrctlClasses}, skipping dex build")
+                return
+            }
+
+            def tmpDir = file("${buildDir}/tmp/scrctl-dex")
+            tmpDir.mkdirs()
+            def outDex = file("src/main/assets/ScrCtl.dex")
+
+            def classFiles = scrctlClasses.listFiles().findAll { it.name.endsWith('.class') }
+                    .collect { it.absolutePath }
+            if (classFiles.isEmpty()) {
+                logger.warn("No .class files found in scrctl package")
+                return
+            }
+
+            exec {
+                executable = d8
+                args = ['--output', tmpDir.absolutePath,
+                        '--lib', androidJar] + classFiles
+            }
+            copy {
+                from file("${tmpDir}/classes.dex")
+                into outDex.parentFile
+                rename { outDex.name }
+            }
+            delete tmpDir
+            logger.lifecycle("ScrCtl.dex built: ${outDex.length()} bytes")
+        }
+    }
+
+    tasks.named('mergeReleaseAssets').configure { dependsOn 'buildScrCtlDex' }
+    tasks.named('mergeDebugAssets').configure { dependsOn 'buildScrCtlDex' }
+
+    tasks.named('compileReleaseJavaWithJavac').configure {
+        finalizedBy 'buildScrCtlDex'
+    }
+    tasks.named('compileDebugJavaWithJavac').configure {
+        finalizedBy 'buildScrCtlDex'
+    }
+}

@@ -29,13 +29,12 @@ public final class ScrCtl {
         Files.write(Paths.get(LOCK.getPath()), myPid.getBytes());
         LOCK.deleteOnExit();
 
-        Method getDisplay = getDisplayMethod();
-        Method setPower   = getSetPowerMethod();
-        Object display;
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-            display = getDisplay.invoke(null, 0);
-        } else {
-            display = getDisplay.invoke(null);
+        Method setPower = getSetPowerMethod();
+        Object display = getDisplay();
+        if (display == null) {
+            System.err.println("Failed to get display token");
+            System.exit(-1);
+            return;
         }
         System.out.println("ScrCtl started, listening on port " + PORT);
 
@@ -59,15 +58,41 @@ public final class ScrCtl {
 
     private static Method getDisplayMethod() throws Exception {
         Class<?> cls = Class.forName("android.view.SurfaceControl");
+        Method m;
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-            return cls.getMethod("getBuiltInDisplay", int.class);
+            m = cls.getDeclaredMethod("getBuiltInDisplay", int.class);
         } else {
-            return cls.getMethod("getInternalDisplayToken");
+            m = cls.getDeclaredMethod("getInternalDisplayToken");
         }
+        m.setAccessible(true);
+        return m;
     }
 
     private static Method getSetPowerMethod() throws Exception {
         Class<?> cls = Class.forName("android.view.SurfaceControl");
-        return cls.getMethod("setDisplayPowerMode", IBinder.class, int.class);
+        Method m = cls.getDeclaredMethod("setDisplayPowerMode", IBinder.class, int.class);
+        m.setAccessible(true);
+        return m;
+    }
+
+    private static Object getDisplay() throws Exception {
+        // Android 14+: try DisplayControl for physical display tokens first
+        if (Build.VERSION.SDK_INT >= 34) {
+            if (DisplayControl.isAvailable()) {
+                long[] ids = DisplayControl.getPhysicalDisplayIds();
+                if (ids != null) {
+                    for (long id : ids) {
+                        IBinder token = DisplayControl.getPhysicalDisplayToken(id);
+                        if (token != null) return token;
+                    }
+                }
+            }
+        }
+
+        Method m = getDisplayMethod();
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            return m.invoke(null, 0);
+        }
+        return m.invoke(null);
     }
 }
