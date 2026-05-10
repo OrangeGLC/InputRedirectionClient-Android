@@ -27,6 +27,7 @@ import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
 import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Switch;
@@ -75,6 +76,15 @@ public class MainActivity extends GameActivity {
     public native int getTurboInterval();
     public native void setTurboMode(int index, boolean fullAuto);
     public native boolean getTurboMode(int index);
+    public native void setKeyMapMode(int mode);
+    public native int getKeyMapMode();
+    public native void setSwapJoysticks(boolean flg);
+    public native boolean getSwapJoysticks();
+    public native void setKeyMapping(int inputIdx, int targetIdx);
+    public native int getKeyMapping(int inputIdx);
+    public native void enterKeyCapture(int n3dsKeyIndex);
+    public native void exitKeyCapture();
+    public native void resolveKeyConflict(boolean accept);
     public void updateUI()
     {
         runOnUiThread(()-> {
@@ -93,7 +103,92 @@ public class MainActivity extends GameActivity {
             etHome.setEnabled(getHomeMapEnable());
             etPower.setEnabled(getPowerMapEnable());
             etPowerOff.setEnabled(getPowerOffMapEnable());
+            updateKeyMappingUI();
         });
+    }
+
+    // Called from C++ after key capture
+    public void onCaptureResult(String n3dsName, String physName,
+                                boolean conflict, String conflictN3dsName) {
+        runOnUiThread(() -> {
+            if (!conflict) {
+                // Success: mapping applied, just refresh
+                mCapturingN3dsIdx = -1;
+                updateKeyMappingUI();
+            } else {
+                // Conflict: show dialog
+                showConflictDialog(n3dsName, physName, conflictN3dsName);
+            }
+        });
+    }
+
+    private void showConflictDialog(String n3dsName, String physName, String conflictN3dsName) {
+        new AlertDialog.Builder(this)
+            .setTitle(R.string.conflict_title)
+            .setMessage(getString(R.string.conflict_msg, physName, conflictN3dsName))
+            .setNegativeButton(R.string.conflict_cancel, (d, w) -> {
+                resolveKeyConflict(false);
+                mCapturingN3dsIdx = -1;
+                updateKeyMappingUI();
+            })
+            .setPositiveButton(R.string.conflict_continue, (d, w) -> {
+                resolveKeyConflict(true);
+                mCapturingN3dsIdx = -1;
+                updateKeyMappingUI();
+            })
+            .setCancelable(false)
+            .show();
+    }
+
+    private void switchKeyMapMode(int mode) {
+        mUpdatingKeyMapUI = true;
+        setKeyMapMode(mode);
+        updateKeyMappingUI();
+        mUpdatingKeyMapUI = false;
+    }
+
+    private void updateKeyMappingUI() {
+        mUpdatingKeyMapUI = true;
+
+        int mode = getKeyMapMode();
+        // Mode tabs: TabLayout handles visual state automatically
+        com.google.android.material.tabs.TabLayout.Tab tab = tabMode.getTabAt(mode);
+        if (tab != null) tab.select();
+
+        // Simple mode layout
+        layoutSimpleMode.setVisibility(mode == 0 ? View.VISIBLE : View.GONE);
+
+        // Custom mode layout
+        layoutCustomMode.setVisibility(mode == 1 ? View.VISIBLE : View.GONE);
+
+        // Swap joysticks
+        swSwapSticks.setChecked(getSwapJoysticks());
+
+        // Update custom mode key mapping entries
+        if (mode == 1) {
+            for (int n3dsIdx = 0; n3dsIdx < mKeyMapEdits.length; n3dsIdx++) {
+                if (mKeyMapEdits[n3dsIdx] == null) continue;
+                // Find which physical key maps to this N3DS key
+                String physName = N3DS_KEY_NAMES[n3dsIdx]; // default
+                for (int physIdx = 0; physIdx < 22; physIdx++) {
+                    if (getKeyMapping(physIdx) == n3dsIdx) {
+                        physName = INPUT_KEY_NAMES[physIdx];
+                        break;
+                    }
+                }
+                if (mCapturingN3dsIdx == n3dsIdx) {
+                    mKeyMapEdits[n3dsIdx].setText("");
+                } else {
+                    mKeyMapEdits[n3dsIdx].setText(physName);
+                }
+            }
+        }
+
+        // Simple mode switches
+        swInvertAB.setChecked(getInvertAB());
+        swInvertXY.setChecked(getInvertXY());
+
+        mUpdatingKeyMapUI = false;
     }
 
     @Override
@@ -155,6 +250,29 @@ public class MainActivity extends GameActivity {
         etHome = findViewById(R.id.et_home);
         etPower = findViewById(R.id.et_power);
         etPowerOff = findViewById(R.id.et_shut);
+
+        // Key mapping views
+        tabMode = findViewById(R.id.tab_mode);
+        layoutSimpleMode = findViewById(R.id.layout_simple_mode);
+        layoutCustomMode = findViewById(R.id.layout_custom_mode);
+        swSwapSticks = findViewById(R.id.switch_swap_sticks);
+
+        mKeyMapEdits[N3DS_KEY_INDEX_A] = findViewById(R.id.et_map_A);
+        mKeyMapEdits[N3DS_KEY_INDEX_B] = findViewById(R.id.et_map_B);
+        mKeyMapEdits[N3DS_KEY_INDEX_X] = findViewById(R.id.et_map_X);
+        mKeyMapEdits[N3DS_KEY_INDEX_Y] = findViewById(R.id.et_map_Y);
+        mKeyMapEdits[N3DS_KEY_INDEX_L] = findViewById(R.id.et_map_L);
+        mKeyMapEdits[N3DS_KEY_INDEX_R] = findViewById(R.id.et_map_R);
+        mKeyMapEdits[N3DS_KEY_INDEX_ZL] = findViewById(R.id.et_map_ZL);
+        mKeyMapEdits[N3DS_KEY_INDEX_ZR] = findViewById(R.id.et_map_ZR);
+        mKeyMapEdits[N3DS_KEY_INDEX_SELECT] = findViewById(R.id.et_map_SELECT);
+        mKeyMapEdits[N3DS_KEY_INDEX_START] = findViewById(R.id.et_map_START);
+        // HOME/POWER are handled in the special buttons section, not in key mapping grid
+        mKeyMapEdits[N3DS_KEY_INDEX_UP] = findViewById(R.id.et_map_UP);
+        mKeyMapEdits[N3DS_KEY_INDEX_DOWN] = findViewById(R.id.et_map_DOWN);
+        mKeyMapEdits[N3DS_KEY_INDEX_LEFT] = findViewById(R.id.et_map_LEFT);
+        mKeyMapEdits[N3DS_KEY_INDEX_RIGHT] = findViewById(R.id.et_map_RIGHT);
+        // N3DS_KEY_INDEX_SHUTDOWN has no entry
 
         disableFocus(findViewById(android.R.id.content));
 
@@ -246,6 +364,44 @@ public class MainActivity extends GameActivity {
                 etPowerOff.setEnabled(b);
             }
         });
+
+        // Key mapping mode toggle
+        tabMode.addOnTabSelectedListener(new com.google.android.material.tabs.TabLayout.OnTabSelectedListener() {
+            @Override
+            public void onTabSelected(com.google.android.material.tabs.TabLayout.Tab tab) {
+                if (!mUpdatingKeyMapUI) switchKeyMapMode(tab.getPosition());
+            }
+            @Override public void onTabUnselected(com.google.android.material.tabs.TabLayout.Tab tab) {}
+            @Override public void onTabReselected(com.google.android.material.tabs.TabLayout.Tab tab) {}
+        });
+
+        // Swap joysticks
+        swSwapSticks.setOnCheckedChangeListener((btn, on) -> {
+            if (mUpdatingKeyMapUI) return;
+            setSwapJoysticks(on);
+        });
+
+        // Key mapping entry click listeners (on EditText)
+        for (int i = 0; i < mKeyMapEdits.length; i++) {
+            if (mKeyMapEdits[i] == null) continue;
+            final int n3dsIdx = i;
+            mKeyMapEdits[i].setOnClickListener(v -> {
+                if (mCapturingN3dsIdx == n3dsIdx) {
+                    // Cancel capture
+                    mCapturingN3dsIdx = -1;
+                    exitKeyCapture();
+                    updateKeyMappingUI();
+                } else {
+                    // Start capture for this N3DS key
+                    if (mCapturingN3dsIdx >= 0) {
+                        exitKeyCapture();
+                    }
+                    mCapturingN3dsIdx = n3dsIdx;
+                    enterKeyCapture(n3dsIdx);
+                    updateKeyMappingUI();
+                }
+            });
+        }
 
         etHome.setInputType(InputType.TYPE_NULL);
         etHome.setFocusable(false);
@@ -468,10 +624,49 @@ public class MainActivity extends GameActivity {
     private EditText etHome;
     private EditText etPower;
     private EditText etPowerOff;
+    // Key mapping UI
+    private com.google.android.material.tabs.TabLayout tabMode;
+    private LinearLayout layoutSimpleMode;
+    private LinearLayout layoutCustomMode;
+    private Switch swSwapSticks;
+    private EditText[] mKeyMapEdits = new EditText[17];
+    private int mCapturingN3dsIdx = -1;
+    // Physical key names (matches gInputKeyTab order in Gamepad.h)
+    private static final String[] INPUT_KEY_NAMES = {
+        "A", "B", "X", "Y", "SELECT", "START", "L", "R", "ZL", "ZR",
+        "L3", "R3", "+↑", "+↓", "+←", "+→",
+        "HOME", "SHARE", "SCRSHOT", "JCL_UP", "JCL_DOWN", "JCL_LEFT", "JCL_RIGHT"
+    };
+    // N3DS key names (matches gN3DsKeyTab order in Gamepad.h)
+    private static final String[] N3DS_KEY_NAMES = {
+        "A", "B", "X", "Y", "L", "R", "ZL", "ZR",
+        "SELECT", "START", "HOME", "POWER",
+        "UP", "DOWN", "LEFT", "RIGHT", "SHUTDOWN"
+    };
+    // N3DS key index constants (mirrors N3DS_KEY_INDEX in Gamepad.h)
+    private static final int N3DS_KEY_INDEX_A = 0;
+    private static final int N3DS_KEY_INDEX_B = 1;
+    private static final int N3DS_KEY_INDEX_X = 2;
+    private static final int N3DS_KEY_INDEX_Y = 3;
+    private static final int N3DS_KEY_INDEX_L = 4;
+    private static final int N3DS_KEY_INDEX_R = 5;
+    private static final int N3DS_KEY_INDEX_ZL = 6;
+    private static final int N3DS_KEY_INDEX_ZR = 7;
+    private static final int N3DS_KEY_INDEX_SELECT = 8;
+    private static final int N3DS_KEY_INDEX_START = 9;
+    private static final int N3DS_KEY_INDEX_HOME = 10;
+    private static final int N3DS_KEY_INDEX_POWER = 11;
+    private static final int N3DS_KEY_INDEX_UP = 12;
+    private static final int N3DS_KEY_INDEX_DOWN = 13;
+    private static final int N3DS_KEY_INDEX_LEFT = 14;
+    private static final int N3DS_KEY_INDEX_RIGHT = 15;
+    // N3DS_KEY_INDEX_SHUTDOWN = 16 (no mapping entry in UI)
+
     private WifiManager.WifiLock wifiLock;
     private PowerManager.WakeLock wakeLock;
 
     private boolean mUpdatingTurboUI;
+    private boolean mUpdatingKeyMapUI;
 
     private void setupTurboButtons() {
         Switch[] sws = {swTurboA, swTurboB, swTurboX, swTurboY,

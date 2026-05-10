@@ -53,6 +53,15 @@ public:
     bool GetInvertAB();
     void SetInvertXY(bool flg);
     bool GetInvertXY();
+    void SetKeyMapMode(int mode);
+    int GetKeyMapMode();
+    void SetSwapJoysticks(bool flg);
+    bool GetSwapJoysticks();
+    void SetKeyMapping(int inputIdx, int targetIdx);
+    int GetKeyMapping(int inputIdx);
+    void EnterKeyCapture(int n3dsKeyIndex);
+    void ExitKeyCapture();
+    void ResolveKeyConflict(bool accept);
     void SetTurbo(N3DS_KEY_INDEX index, bool flg);
     bool GetTurbo(N3DS_KEY_INDEX index);
     void SetTurboInterval(u32 ms);
@@ -75,6 +84,9 @@ private:
     bool mHasFocus, mIsVisible, mHasWindow;
     bool mTurboMark[MAX_N3DS_KEY_TURBO_INDEX];
     bool mTurboActive[MAX_N3DS_KEY_TURBO_INDEX];
+    N3DS_KEY_INDEX mCaptureTargetN3dsKey = N3DS_KEY_INDEX_INVALID;
+    INPUT_KEY_INDEX mConflictInputIdx = INPUT_KEY_INDEX_INVALID;
+    N3DS_KEY_INDEX mConflictOldN3dsIdx = N3DS_KEY_INDEX_INVALID;
     using clock = std::chrono::high_resolution_clock;
     typeof(clock::now()) mLastTurboTime[MAX_N3DS_KEY_TURBO_INDEX];
     typeof(clock::now()) mLastSendTime;

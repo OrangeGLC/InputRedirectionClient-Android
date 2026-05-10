@@ -1,6 +1,15 @@
 <resources>
     <string name="app_name">IRCA</string>
     <string name="bt_txt_save">Save</string>
+    <string name="title_keymap">Key Mapping</string>
+    <string name="mode_simple">Simple</string>
+    <string name="mode_custom">Custom</string>
+    <string name="swap_sticks">Swap L/R Sticks</string>
+    <string name="capture_hint">Press a gamepad button…</string>
+    <string name="conflict_title">Key Conflict</string>
+    <string name="conflict_msg">%1$s is already mapped to 3DS %2$s. Proceeding will remap 3DS %2$s to another free key. Continue?</string>
+    <string name="conflict_cancel">Cancel</string>
+    <string name="conflict_continue">Continue</string>
     <string name="title_mappingswap">Mapping Swap</string>
     <string name="title_turbo">3DS Buttons Turbo</string>
     <string name="title_spBtmap">3DS Special Buttons Mapping</string>

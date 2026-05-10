@@ -98,6 +98,40 @@ void updateUI()
     env->DeleteLocalRef(main);
 }
 
+void callOnCaptureResult(const char* n3dsName, const char* physName,
+                         bool conflict, const char* conflictN3dsName)
+{
+    JNIEnv* env = getJniEnv();
+    if(nullptr == env) return;
+
+    jobject mainActivity = gApp->activity->javaGameActivity;
+    if(nullptr == mainActivity) return;
+
+    jclass main = env->GetObjectClass(mainActivity);
+    if (env->ExceptionCheck() || main == nullptr)
+    {
+        env->ExceptionClear();
+        return;
+    }
+    jmethodID method = env->GetMethodID(main, "onCaptureResult",
+        "(Ljava/lang/String;Ljava/lang/String;ZLjava/lang/String;)V");
+    if (env->ExceptionCheck() || method == nullptr)
+    {
+        env->ExceptionClear();
+        env->DeleteLocalRef(main);
+        return;
+    }
+    jstring jN3ds = env->NewStringUTF(n3dsName);
+    jstring jPhys = env->NewStringUTF(physName);
+    jstring jConflict = conflictN3dsName ? env->NewStringUTF(conflictN3dsName) : nullptr;
+    env->CallVoidMethod(mainActivity, method, jN3ds, jPhys,
+                        conflict ? JNI_TRUE : JNI_FALSE, jConflict);
+    if(jN3ds) env->DeleteLocalRef(jN3ds);
+    if(jPhys) env->DeleteLocalRef(jPhys);
+    if(jConflict) env->DeleteLocalRef(jConflict);
+    env->DeleteLocalRef(main);
+}
+
 extern "C"
 JNIEXPORT void JNICALL
 Java_com_jingrong_inputredirectionclient_1android_MainActivity_cleanNative(JNIEnv *env,
@@ -244,4 +278,79 @@ Java_com_jingrong_inputredirectionclient_1android_MainActivity_getTurboInterval(
         JNIEnv *env, jobject thiz)
 {
     return Transmitter::GetInstance()->GetTurboInterval();
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_jingrong_inputredirectionclient_1android_MainActivity_setKeyMapMode(
+        JNIEnv *env, jobject thiz, jint mode)
+{
+    Transmitter::GetInstance()->SetKeyMapMode(mode);
+    Transmitter::GetInstance()->SaveConfig();
+}
+
+extern "C"
+JNIEXPORT jint JNICALL
+Java_com_jingrong_inputredirectionclient_1android_MainActivity_getKeyMapMode(
+        JNIEnv *env, jobject thiz)
+{
+    return Transmitter::GetInstance()->GetKeyMapMode();
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_jingrong_inputredirectionclient_1android_MainActivity_setSwapJoysticks(
+        JNIEnv *env, jobject thiz, jboolean flg)
+{
+    Transmitter::GetInstance()->SetSwapJoysticks(flg);
+    Transmitter::GetInstance()->SaveConfig();
+}
+
+extern "C"
+JNIEXPORT jboolean JNICALL
+Java_com_jingrong_inputredirectionclient_1android_MainActivity_getSwapJoysticks(
+        JNIEnv *env, jobject thiz)
+{
+    return Transmitter::GetInstance()->GetSwapJoysticks();
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_jingrong_inputredirectionclient_1android_MainActivity_setKeyMapping(
+        JNIEnv *env, jobject thiz, jint inputIdx, jint targetIdx)
+{
+    Transmitter::GetInstance()->SetKeyMapping(inputIdx, targetIdx);
+    Transmitter::GetInstance()->SaveConfig();
+}
+
+extern "C"
+JNIEXPORT jint JNICALL
+Java_com_jingrong_inputredirectionclient_1android_MainActivity_getKeyMapping(
+        JNIEnv *env, jobject thiz, jint inputIdx)
+{
+    return Transmitter::GetInstance()->GetKeyMapping(inputIdx);
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_jingrong_inputredirectionclient_1android_MainActivity_enterKeyCapture(
+        JNIEnv *env, jobject thiz, jint n3dsKeyIndex)
+{
+    Transmitter::GetInstance()->EnterKeyCapture(n3dsKeyIndex);
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_jingrong_inputredirectionclient_1android_MainActivity_exitKeyCapture(
+        JNIEnv *env, jobject thiz)
+{
+    Transmitter::GetInstance()->ExitKeyCapture();
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_jingrong_inputredirectionclient_1android_MainActivity_resolveKeyConflict(
+        JNIEnv *env, jobject thiz, jboolean accept)
+{
+    Transmitter::GetInstance()->ResolveKeyConflict(accept);
 }

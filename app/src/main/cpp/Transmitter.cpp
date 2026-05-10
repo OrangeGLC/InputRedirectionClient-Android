@@ -98,6 +98,8 @@ void Transmitter::SetDefaultConfigValue()
     mCfg.ip[CONFIG_IP_MAX_LEN - 1] = '\0';
     mCfg.gamepadCfg.deadZone[JOYSTICK_L] = 0.05f;
     mCfg.gamepadCfg.deadZone[JOYSTICK_R] = 0.05f;
+    mCfg.gamepadCfg.keyMapMode = 0;
+    mCfg.gamepadCfg.swapJoysticks = false;
     mCfg.gamepadCfg.invertAB = false;
     mCfg.gamepadCfg.invertXY = false;
     mCfg.gamepadCfg.mapHome = false;
@@ -204,11 +206,36 @@ void Transmitter::ParseJsonConfig(cJSON *root)
     if(cJSON_IsString(ip) && ip->valuestring)
         strncpy(mCfg.ip, ip->valuestring, CONFIG_IP_MAX_LEN - 1);
 
+    cJSON *kmm = cJSON_GetObjectItem(root, "keyMapMode");
+    if(cJSON_IsNumber(kmm)) SetKeyMapMode(kmm->valueint);
+
+    cJSON *swj = cJSON_GetObjectItem(root, "swapJoysticks");
+    if(cJSON_IsBool(swj)) SetSwapJoysticks(cJSON_IsTrue(swj));
+
     cJSON *iab = cJSON_GetObjectItem(root, "invertAB");
     if(cJSON_IsBool(iab)) SetInvertAB(cJSON_IsTrue(iab));
 
     cJSON *ixy = cJSON_GetObjectItem(root, "invertXY");
     if(cJSON_IsBool(ixy)) SetInvertXY(cJSON_IsTrue(ixy));
+
+    cJSON *keyMappings = cJSON_GetObjectItem(root, "keyMappings");
+    if(cJSON_IsObject(keyMappings) && mCfg.gamepadCfg.keyMapMode == 1)
+    {
+        // keyMappings: N3DS key name → physical key name
+        for(int i = 0; i < MAX_N3DS_KEY_INDEX; ++i)
+        {
+            cJSON *physName = cJSON_GetObjectItem(keyMappings, gN3DsKeyTab[i].name);
+            if(!cJSON_IsString(physName)) continue;
+            for(int j = 0; j < MAX_INPUT_KEY_INDEX; ++j)
+            {
+                if(strcmp(physName->valuestring, gInputKeyTab[j].name) == 0)
+                {
+                    mCfg.gamepadCfg.targetKeyIndex[j] = static_cast<N3DS_KEY_INDEX>(i);
+                    break;
+                }
+            }
+        }
+    }
 
     cJSON *mh = cJSON_GetObjectItem(root, "mapHome");
     if(cJSON_IsBool(mh)) SetHomeMap(cJSON_IsTrue(mh));
@@ -295,12 +322,35 @@ Transmitter::RetVal Transmitter::SaveConfig()
     cJSON *root = cJSON_CreateObject();
     cJSON_AddNumberToObject(root, "version", CONFIG_JSON_VERSION);
     cJSON_AddStringToObject(root, "ip", mCfg.ip);
+    cJSON_AddNumberToObject(root, "keyMapMode", mCfg.gamepadCfg.keyMapMode);
+    cJSON_AddBoolToObject(root, "swapJoysticks", mCfg.gamepadCfg.swapJoysticks);
     cJSON_AddBoolToObject(root, "invertAB", mCfg.gamepadCfg.invertAB);
     cJSON_AddBoolToObject(root, "invertXY", mCfg.gamepadCfg.invertXY);
     cJSON_AddBoolToObject(root, "mapHome", mCfg.gamepadCfg.mapHome);
     cJSON_AddBoolToObject(root, "mapPower", mCfg.gamepadCfg.mapPower);
     cJSON_AddBoolToObject(root, "mapShut", mCfg.gamepadCfg.mapShut);
     cJSON_AddNumberToObject(root, "turboIntervalMs", mCfg.gamepadCfg.turboIntervalMs);
+
+    /* Only persist keyMappings in custom mode */
+    if(mCfg.gamepadCfg.keyMapMode == 1)
+    {
+        cJSON *keyMappings = cJSON_CreateObject();
+        for(int i = 0; i < MAX_N3DS_KEY_INDEX; ++i)
+        {
+            const char* n3dsName = gN3DsKeyTab[i].name;
+            const char* physName = n3dsName;
+            for(int j = 0; j < MAX_INPUT_KEY_INDEX; ++j)
+            {
+                if(mCfg.gamepadCfg.targetKeyIndex[j] == i)
+                {
+                    physName = gInputKeyTab[j].name;
+                    break;
+                }
+            }
+            cJSON_AddStringToObject(keyMappings, n3dsName, physName);
+        }
+        cJSON_AddItemToObject(root, "keyMappings", keyMappings);
+    }
 
     cJSON *turboKeys = cJSON_CreateObject();
     for(int i = 0; i < MAX_N3DS_KEY_TURBO_INDEX; ++i)
@@ -514,6 +564,33 @@ void Transmitter::HandleKeyEvent(GameActivityKeyEvent* keyEvent)
             return;
         }
 
+        /* Key capture mode: intercept next key press for remapping */
+        if(mCaptureTargetN3dsKey != N3DS_KEY_INDEX_INVALID
+            && keyEvent->action == AKEY_EVENT_ACTION_DOWN
+            && keyEvent->repeatCount == 0)
+        {
+            N3DS_KEY_INDEX oldTarget = mCfg.gamepadCfg.targetKeyIndex[inIndex];
+            if(oldTarget == mCaptureTargetN3dsKey)
+            {
+                // No conflict: same target, just update
+                mCfg.gamepadCfg.targetKeyIndex[inIndex] = mCaptureTargetN3dsKey;
+                SaveConfig();
+                mCaptureTargetN3dsKey = N3DS_KEY_INDEX_INVALID;
+                callOnCaptureResult(gN3DsKeyTab[oldTarget].name,
+                                    gInputKeyTab[inIndex].name, false, nullptr);
+            }
+            else
+            {
+                // Conflict: physical key already mapped to a different 3DS key
+                mConflictInputIdx = inIndex;
+                mConflictOldN3dsIdx = oldTarget;
+                callOnCaptureResult(gN3DsKeyTab[mCaptureTargetN3dsKey].name,
+                                    gInputKeyTab[inIndex].name, true,
+                                    gN3DsKeyTab[oldTarget].name);
+            }
+            return;
+        }
+
         /* Full-auto mode: turbo keys toggle on press */
         N3DS_KEY_INDEX outIndex = mCfg.gamepadCfg.targetKeyIndex[inIndex];
         if(outIndex < MAX_N3DS_KEY_TURBO_INDEX &&
@@ -563,6 +640,13 @@ void Transmitter::HandleMotionEvent(GameActivityMotionEvent* motionEvent)
                                                                            AMOTION_EVENT_AXIS_RX);
             mJoystick[JOYSTICK_R].y = -GameActivityPointerAxes_getAxisValue(&motionEvent->pointers[0],
                                                                             AMOTION_EVENT_AXIS_RY) /** yAxisMultiplier*/;
+        }
+
+        if(mCfg.gamepadCfg.swapJoysticks)
+        {
+            AxisValue tmp = mJoystick[JOYSTICK_L];
+            mJoystick[JOYSTICK_L] = mJoystick[JOYSTICK_R];
+            mJoystick[JOYSTICK_R] = tmp;
         }
 
         ALOGD("Stick LX=%.3f LY=%.3f RX=%.3f RY=%.3f LLR=%d LUD=%d LT=%d RT=%d",
@@ -857,4 +941,139 @@ bool Transmitter::NeedTurbo()
         if(mCfg.gamepadCfg.turboMode[out] == TURBO_MODE_FULL && mTurboActive[out]) return true;
     }
     return false;
+}
+
+void Transmitter::SetKeyMapMode(int mode)
+{
+    if(mode != 0 && mode != 1) return;
+    mCfg.gamepadCfg.keyMapMode = mode;
+    if(mode == 0)
+    {
+        SetDefaultKeyMapValue();
+        SetInvertAB(mCfg.gamepadCfg.invertAB);
+        SetInvertXY(mCfg.gamepadCfg.invertXY);
+    }
+    else
+    {
+        // Reload keyMappings from JSON
+        std::string jsonPath = gCfgPath + "/config.json";
+        auto fd = open(jsonPath.c_str(), O_RDONLY);
+        if(fd >= 0)
+        {
+            off_t sz = lseek(fd, 0, SEEK_END);
+            if(sz > 0 && sz < 65536)
+            {
+                lseek(fd, 0, SEEK_SET);
+                char *buf = (char*)malloc((size_t)sz + 1);
+                if(buf)
+                {
+                    ssize_t n = read(fd, buf, sz);
+                    if(n == sz)
+                    {
+                        buf[sz] = '\0';
+                        cJSON *root = cJSON_Parse(buf);
+                        if(root)
+                        {
+                            cJSON *keyMappings = cJSON_GetObjectItem(root, "keyMappings");
+                            if(cJSON_IsObject(keyMappings))
+                            {
+                                for(int i = 0; i < MAX_N3DS_KEY_INDEX; ++i)
+                                {
+                                    cJSON *physName = cJSON_GetObjectItem(keyMappings, gN3DsKeyTab[i].name);
+                                    if(!cJSON_IsString(physName)) continue;
+                                    for(int j = 0; j < MAX_INPUT_KEY_INDEX; ++j)
+                                    {
+                                        if(strcmp(physName->valuestring, gInputKeyTab[j].name) == 0)
+                                        {
+                                            mCfg.gamepadCfg.targetKeyIndex[j] = static_cast<N3DS_KEY_INDEX>(i);
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                            cJSON_Delete(root);
+                        }
+                    }
+                    free(buf);
+                }
+            }
+            close(fd);
+        }
+    }
+}
+
+int Transmitter::GetKeyMapMode()
+{
+    return mCfg.gamepadCfg.keyMapMode;
+}
+
+void Transmitter::SetSwapJoysticks(bool flg)
+{
+    mCfg.gamepadCfg.swapJoysticks = flg;
+}
+
+bool Transmitter::GetSwapJoysticks()
+{
+    return mCfg.gamepadCfg.swapJoysticks;
+}
+
+void Transmitter::SetKeyMapping(int inputIdx, int targetIdx)
+{
+    if(inputIdx < 0 || inputIdx >= MAX_INPUT_KEY_INDEX) return;
+    if(targetIdx < 0 || targetIdx >= MAX_N3DS_KEY_INDEX) return;
+    mCfg.gamepadCfg.targetKeyIndex[inputIdx] = static_cast<N3DS_KEY_INDEX>(targetIdx);
+}
+
+int Transmitter::GetKeyMapping(int inputIdx)
+{
+    if(inputIdx < 0 || inputIdx >= MAX_INPUT_KEY_INDEX) return N3DS_KEY_INDEX_INVALID;
+    return static_cast<int>(mCfg.gamepadCfg.targetKeyIndex[inputIdx]);
+}
+
+void Transmitter::EnterKeyCapture(int n3dsKeyIndex)
+{
+    if(n3dsKeyIndex < 0 || n3dsKeyIndex >= MAX_N3DS_KEY_INDEX) return;
+    mCaptureTargetN3dsKey = static_cast<N3DS_KEY_INDEX>(n3dsKeyIndex);
+    mConflictInputIdx = INPUT_KEY_INDEX_INVALID;
+    mConflictOldN3dsIdx = N3DS_KEY_INDEX_INVALID;
+}
+
+void Transmitter::ExitKeyCapture()
+{
+    mCaptureTargetN3dsKey = N3DS_KEY_INDEX_INVALID;
+    mConflictInputIdx = INPUT_KEY_INDEX_INVALID;
+    mConflictOldN3dsIdx = N3DS_KEY_INDEX_INVALID;
+}
+
+void Transmitter::ResolveKeyConflict(bool accept)
+{
+    if(mCaptureTargetN3dsKey == N3DS_KEY_INDEX_INVALID) return;
+    if(mConflictInputIdx == INPUT_KEY_INDEX_INVALID) return;
+
+    if(accept)
+    {
+        // Find which physical key currently maps to the capture target
+        INPUT_KEY_INDEX oldPhysIdx = INPUT_KEY_INDEX_INVALID;
+        for(int i = 0; i < MAX_INPUT_KEY_INDEX; ++i)
+        {
+            if(i != mConflictInputIdx
+                && mCfg.gamepadCfg.targetKeyIndex[i] == mCaptureTargetN3dsKey)
+            {
+                oldPhysIdx = static_cast<INPUT_KEY_INDEX>(i);
+                break;
+            }
+        }
+        // Swap: new physical key → capture target
+        mCfg.gamepadCfg.targetKeyIndex[mConflictInputIdx] = mCaptureTargetN3dsKey;
+        // Reassign the displaced physical key to the old target
+        if(oldPhysIdx != INPUT_KEY_INDEX_INVALID)
+            mCfg.gamepadCfg.targetKeyIndex[oldPhysIdx] = mConflictOldN3dsIdx;
+
+        SaveConfig();
+        updateUI(); // refresh after swap
+    }
+    // Exit capture mode in both cases
+    mCaptureTargetN3dsKey = N3DS_KEY_INDEX_INVALID;
+    mConflictInputIdx = INPUT_KEY_INDEX_INVALID;
+    mConflictOldN3dsIdx = N3DS_KEY_INDEX_INVALID;
 }

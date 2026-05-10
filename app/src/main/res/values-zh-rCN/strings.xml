@@ -2,6 +2,15 @@
 <resources>
     <string name="app_name">手柄热点</string>
     <string name="bt_txt_save">保存</string>
+    <string name="title_keymap">按键映射</string>
+    <string name="mode_simple">简单</string>
+    <string name="mode_custom">自定义</string>
+    <string name="swap_sticks">交换左右摇杆</string>
+    <string name="capture_hint">请按下手柄按键</string>
+    <string name="conflict_title">按键冲突</string>
+    <string name="conflict_msg">%1$s 已映射到3DS的 %2$s 按键，继续设置将为3DS的 %2$s 按键修改为其他不冲突的按键，是否继续？</string>
+    <string name="conflict_cancel">放弃</string>
+    <string name="conflict_continue">继续</string>
     <string name="title_mappingswap">映射交换</string>
     <string name="title_turbo">3DS按键连发</string>
     <string name="title_spBtmap">3DS特殊按键映射</string>

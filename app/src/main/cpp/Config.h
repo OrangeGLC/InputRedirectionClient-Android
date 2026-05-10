@@ -35,6 +35,8 @@ typedef enum TURBO_MODE
 typedef struct GamepadCfg
 {
     float deadZone[MAX_JOYSTICK_INDEX];
+    int keyMapMode;             // 0=简单, 1=自定义
+    bool swapJoysticks;         // 左右摇杆交换
     bool invertAB;
     bool invertXY;
     bool mapHome;
