@@ -37,6 +37,10 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
 
 import com.google.androidgamesdk.GameActivity;
 
@@ -223,6 +227,13 @@ public class MainActivity extends GameActivity {
         //Read IP from config file
         File inPath = getFilesDir();
         initNative(inPath.getAbsolutePath());
+
+        // 允许内容延伸到系统栏下方，并手动处理底部insets
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
+
+        // 屏幕常亮
+        getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+
         setContentView(R.layout.activity_main);
 
         etIP = findViewById(R.id.et_ip);
@@ -230,6 +241,11 @@ public class MainActivity extends GameActivity {
         btDisableTurbo = findViewById(R.id.bt_disableturbo);
         sbTurboInterval = findViewById(R.id.sb_turbo_interval);
         scrollMain = findViewById(R.id.scroll_main);
+        ViewCompat.setOnApplyWindowInsetsListener(scrollMain, (v, insets) -> {
+            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            v.setPaddingRelative(v.getPaddingStart(), v.getPaddingTop(), v.getPaddingEnd(), systemBars.bottom);
+            return insets;
+        });
         etTurboInterval = findViewById(R.id.et_turbo_interval);
         btOffScr = findViewById(R.id.bt_offScr);
         swInvertAB = findViewById(R.id.switch_invertAB);
@@ -535,7 +551,7 @@ public class MainActivity extends GameActivity {
             for (int i = 0; i < g.getChildCount(); i++)
                 disableFocus(g.getChildAt(i));
         }
-        if (v != null && v != etIP && v != etTurboInterval)
+        if (v != null && v != etIP)
             v.setFocusable(false);
     }
 
