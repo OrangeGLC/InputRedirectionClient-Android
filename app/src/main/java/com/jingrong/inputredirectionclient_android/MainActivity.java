@@ -22,12 +22,14 @@ import android.view.MenuItem;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.ScrollView;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Switch;
@@ -99,7 +101,7 @@ public class MainActivity extends GameActivity {
             swPowerOffMap.setChecked(getPowerOffMapEnable());
             int interval = getTurboInterval();
             sbTurboInterval.setProgress(interval);
-            tvTurboInterval.setText(getString(R.string.turbo_interval_label, interval));
+            etTurboInterval.setText(String.valueOf(interval));
             etHome.setEnabled(getHomeMapEnable());
             etPower.setEnabled(getPowerMapEnable());
             etPowerOff.setEnabled(getPowerOffMapEnable());
@@ -227,7 +229,8 @@ public class MainActivity extends GameActivity {
         btSaveIP = findViewById(R.id.bt_save);
         btDisableTurbo = findViewById(R.id.bt_disableturbo);
         sbTurboInterval = findViewById(R.id.sb_turbo_interval);
-        tvTurboInterval = findViewById(R.id.tv_turbo_interval);
+        scrollMain = findViewById(R.id.scroll_main);
+        etTurboInterval = findViewById(R.id.et_turbo_interval);
         btOffScr = findViewById(R.id.bt_offScr);
         swInvertAB = findViewById(R.id.switch_invertAB);
         swInvertXY = findViewById(R.id.switch_invertXY);
@@ -314,11 +317,26 @@ public class MainActivity extends GameActivity {
 
         sbTurboInterval.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                tvTurboInterval.setText(getString(R.string.turbo_interval_label, progress));
+                if (fromUser) etTurboInterval.setText(String.valueOf(progress));
             }
             @Override public void onStartTrackingTouch(SeekBar seekBar) {}
             @Override public void onStopTrackingTouch(SeekBar seekBar) {
                 setTurboInterval(seekBar.getProgress());
+            }
+        });
+
+        etTurboInterval.setOnEditorActionListener((v, actionId, event) -> {
+            if (actionId == EditorInfo.IME_ACTION_DONE) {
+                applyTurboIntervalInput();
+                return true;
+            }
+            return false;
+        });
+        etTurboInterval.setOnFocusChangeListener((v, hasFocus) -> {
+            if (hasFocus) {
+                scrollMain.postDelayed(() -> scrollMain.smoothScrollTo(0, etTurboInterval.getBottom()), 200);
+            } else {
+                applyTurboIntervalInput();
             }
         });
 
@@ -517,7 +535,7 @@ public class MainActivity extends GameActivity {
             for (int i = 0; i < g.getChildCount(); i++)
                 disableFocus(g.getChildAt(i));
         }
-        if (v != null && v != etIP)
+        if (v != null && v != etIP && v != etTurboInterval)
             v.setFocusable(false);
     }
 
@@ -604,7 +622,8 @@ public class MainActivity extends GameActivity {
     private Button btSaveIP;
     private Button btOffScr;
     private SeekBar sbTurboInterval;
-    private TextView tvTurboInterval;
+    private ScrollView scrollMain;
+    private EditText etTurboInterval;
     private Button btDisableTurbo;
     private Switch swInvertAB;
     private Switch swInvertXY;
@@ -708,6 +727,20 @@ public class MainActivity extends GameActivity {
             cbs[i].setEnabled(on);
         }
         mUpdatingTurboUI = false;
+    }
+
+    private void applyTurboIntervalInput() {
+        try {
+            int val = Integer.parseInt(etTurboInterval.getText().toString().trim());
+            if (val < 50) val = 50;
+            if (val > 500) val = 500;
+            setTurboInterval(val);
+            sbTurboInterval.setProgress(val);
+            etTurboInterval.setText(String.valueOf(val));
+        } catch (NumberFormatException e) {
+            int cur = getTurboInterval();
+            etTurboInterval.setText(String.valueOf(cur));
+        }
     }
 
     private void checkUpdate() {
