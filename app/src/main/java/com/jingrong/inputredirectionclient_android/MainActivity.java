@@ -158,24 +158,24 @@ public class MainActivity extends GameActivity {
         if (tab != null) tab.select();
 
         // Simple mode layout
-        layoutSimpleMode.setVisibility(mode == 0 ? View.VISIBLE : View.GONE);
+        layoutSimpleMode.setVisibility(mode == KEYMAP_MODE_SIMPLE ? View.VISIBLE : View.GONE);
 
         // Custom mode layout
-        layoutCustomMode.setVisibility(mode == 1 ? View.VISIBLE : View.GONE);
+        layoutCustomMode.setVisibility(mode == KEYMAP_MODE_CUSTOM ? View.VISIBLE : View.GONE);
 
         // Swap joysticks (sync both switches, show correct one per mode)
         boolean swap = getSwapJoysticks();
         swSwapSticks.setChecked(swap);
-        swSwapSticks.setVisibility(mode == 1 ? View.VISIBLE : View.GONE);
+        swSwapSticks.setVisibility(mode == KEYMAP_MODE_CUSTOM ? View.VISIBLE : View.GONE);
         swSwapSticksSimple.setChecked(swap);
 
         // Update custom mode key mapping entries
-        if (mode == 1) {
+        if (mode == KEYMAP_MODE_CUSTOM) {
             for (int n3dsIdx = 0; n3dsIdx < mKeyMapEdits.length; n3dsIdx++) {
                 if (mKeyMapEdits[n3dsIdx] == null) continue;
                 // Find which physical key maps to this N3DS key
                 String physName = N3DS_KEY_NAMES[n3dsIdx]; // default
-                for (int physIdx = 0; physIdx < 22; physIdx++) {
+                for (int physIdx = 0; physIdx < MAX_INPUT_KEY_INDEX; physIdx++) {
                     if (getKeyMapping(physIdx) == n3dsIdx) {
                         physName = INPUT_KEY_NAMES[physIdx];
                         break;
@@ -308,7 +308,7 @@ public class MainActivity extends GameActivity {
         btDisableTurbo.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                for (int i = 0; i < 8; i++) {
+                for (int i = 0; i < MAX_N3DS_KEY_TURBO_INDEX; i++) {
                     setTurbo(i, false);
                 }
                 updateUI();
@@ -688,6 +688,13 @@ public class MainActivity extends GameActivity {
     private static final int N3DS_KEY_INDEX_RIGHT = 15;
     // N3DS_KEY_INDEX_SHUTDOWN = 16 (no mapping entry in UI)
 
+    private static final int KEYMAP_MODE_SIMPLE = 0;
+    private static final int KEYMAP_MODE_CUSTOM = 1;
+    private static final int MAX_INPUT_KEY_INDEX = 22; // mirrors C++ INPUT_KEY_INDEX_INVALID
+    private static final int MAX_N3DS_KEY_TURBO_INDEX = 8;
+    private static final int TURBO_INTERVAL_MIN = 50;
+    private static final int TURBO_INTERVAL_MAX = 500;
+
     private WifiManager.WifiLock wifiLock;
     private PowerManager.WakeLock wakeLock;
 
@@ -699,7 +706,7 @@ public class MainActivity extends GameActivity {
                         swTurboL, swTurboR, swTurboZL, swTurboZR};
         CheckBox[] cbs = {cbTurboModeA, cbTurboModeB, cbTurboModeX, cbTurboModeY,
                           cbTurboModeL, cbTurboModeR, cbTurboModeZL, cbTurboModeZR};
-        for (int i = 0; i < 8; i++) {
+        for (int i = 0; i < MAX_N3DS_KEY_TURBO_INDEX; i++) {
             final int idx = i;
             sws[i].setOnCheckedChangeListener((btn, on) -> {
                 if (mUpdatingTurboUI) return;
@@ -720,7 +727,7 @@ public class MainActivity extends GameActivity {
                         swTurboL, swTurboR, swTurboZL, swTurboZR};
         CheckBox[] cbs = {cbTurboModeA, cbTurboModeB, cbTurboModeX, cbTurboModeY,
                           cbTurboModeL, cbTurboModeR, cbTurboModeZL, cbTurboModeZR};
-        for (int i = 0; i < 8; i++) {
+        for (int i = 0; i < MAX_N3DS_KEY_TURBO_INDEX; i++) {
             boolean on = getTurbo(i);
             sws[i].setChecked(on);
             cbs[i].setChecked(getTurboMode(i));
@@ -732,8 +739,8 @@ public class MainActivity extends GameActivity {
     private void applyTurboIntervalInput() {
         try {
             int val = Integer.parseInt(etTurboInterval.getText().toString().trim());
-            if (val < 50) val = 50;
-            if (val > 500) val = 500;
+            if (val < TURBO_INTERVAL_MIN) val = TURBO_INTERVAL_MIN;
+            if (val > TURBO_INTERVAL_MAX) val = TURBO_INTERVAL_MAX;
             setTurboInterval(val);
             sbTurboInterval.setProgress(val);
             etTurboInterval.setText(String.valueOf(val));

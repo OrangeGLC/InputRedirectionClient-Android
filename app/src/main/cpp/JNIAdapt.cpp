@@ -286,7 +286,6 @@ Java_com_jingrong_inputredirectionclient_1android_MainActivity_setKeyMapMode(
         JNIEnv *env, jobject thiz, jint mode)
 {
     Transmitter::GetInstance()->SetKeyMapMode(mode);
-    Transmitter::GetInstance()->SaveConfig();
 }
 
 extern "C"

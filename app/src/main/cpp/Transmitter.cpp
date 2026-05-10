@@ -67,6 +67,7 @@ Transmitter::Transmitter(struct android_app *app)
     mSock = -1;
     mLastSendTime = clock::now();
     LoadConfig();
+    GenerateFrame(); // initialize mFrameBuffer with neutral frame before first SendFrame
     ALOGD("Transmitter: Finish initialization.");
 }
 
@@ -98,14 +99,14 @@ void Transmitter::SetDefaultConfigValue()
     mCfg.ip[CONFIG_IP_MAX_LEN - 1] = '\0';
     mCfg.gamepadCfg.deadZone[JOYSTICK_L] = 0.05f;
     mCfg.gamepadCfg.deadZone[JOYSTICK_R] = 0.05f;
-    mCfg.gamepadCfg.keyMapMode = 0;
+    mCfg.gamepadCfg.keyMapMode = KEYMAP_MODE_SIMPLE;
     mCfg.gamepadCfg.swapJoysticks = false;
     mCfg.gamepadCfg.invertAB = false;
     mCfg.gamepadCfg.invertXY = false;
     mCfg.gamepadCfg.mapHome = false;
     mCfg.gamepadCfg.mapPower = false;
     mCfg.gamepadCfg.mapShut = false;
-    mCfg.gamepadCfg.turboIntervalMs = 60;
+    mCfg.gamepadCfg.turboIntervalMs = DEFAULT_TURBO_INTERVAL;
     for(auto i=0; i<MAX_N3DS_KEY_TURBO_INDEX; ++i)
         mCfg.gamepadCfg.turboMode[i] = TURBO_MODE_SEMI;
     SetDefaultKeyMapValue();
@@ -219,21 +220,16 @@ void Transmitter::ParseJsonConfig(cJSON *root)
     if(cJSON_IsBool(ixy)) SetInvertXY(cJSON_IsTrue(ixy));
 
     cJSON *keyMappings = cJSON_GetObjectItem(root, "keyMappings");
-    if(cJSON_IsObject(keyMappings) && mCfg.gamepadCfg.keyMapMode == 1)
+    if(cJSON_IsObject(keyMappings) && mCfg.gamepadCfg.keyMapMode == KEYMAP_MODE_CUSTOM)
     {
-        // keyMappings: N3DS key name → physical key name
+        // keyMappings: N3DS key name → physical key index
         for(int i = 0; i < MAX_N3DS_KEY_INDEX; ++i)
         {
-            cJSON *physName = cJSON_GetObjectItem(keyMappings, gN3DsKeyTab[i].name);
-            if(!cJSON_IsString(physName)) continue;
-            for(int j = 0; j < MAX_INPUT_KEY_INDEX; ++j)
-            {
-                if(strcmp(physName->valuestring, gInputKeyTab[j].name) == 0)
-                {
-                    mCfg.gamepadCfg.targetKeyIndex[j] = static_cast<N3DS_KEY_INDEX>(i);
-                    break;
-                }
-            }
+            cJSON *physIdx = cJSON_GetObjectItem(keyMappings, gN3DsKeyTab[i].name);
+            if(!cJSON_IsNumber(physIdx)) continue;
+            int j = physIdx->valueint;
+            if(j >= 0 && j < MAX_INPUT_KEY_INDEX)
+                mCfg.gamepadCfg.targetKeyIndex[j] = static_cast<N3DS_KEY_INDEX>(i);
         }
     }
 
@@ -278,7 +274,7 @@ void Transmitter::LoadConfig()
     if(fd >= 0)
     {
         off_t sz = lseek(fd, 0, SEEK_END);
-        if(sz > 0 && sz < 65536)
+        if(sz > 0 && sz < CONFIG_FILE_MAX_SIZE)
         {
             lseek(fd, 0, SEEK_SET);
             char *buf = (char*)malloc((size_t)sz + 1);
@@ -331,26 +327,22 @@ Transmitter::RetVal Transmitter::SaveConfig()
     cJSON_AddBoolToObject(root, "mapShut", mCfg.gamepadCfg.mapShut);
     cJSON_AddNumberToObject(root, "turboIntervalMs", mCfg.gamepadCfg.turboIntervalMs);
 
-    /* Only persist keyMappings in custom mode */
-    if(mCfg.gamepadCfg.keyMapMode == 1)
+    cJSON *keyMappings = cJSON_CreateObject();
+    for(int i = 0; i < MAX_N3DS_KEY_INDEX; ++i)
     {
-        cJSON *keyMappings = cJSON_CreateObject();
-        for(int i = 0; i < MAX_N3DS_KEY_INDEX; ++i)
+        const char* n3dsName = gN3DsKeyTab[i].name;
+        int physIdx = -1;
+        for(int j = 0; j < MAX_INPUT_KEY_INDEX; ++j)
         {
-            const char* n3dsName = gN3DsKeyTab[i].name;
-            const char* physName = n3dsName;
-            for(int j = 0; j < MAX_INPUT_KEY_INDEX; ++j)
+            if(mCfg.gamepadCfg.targetKeyIndex[j] == i)
             {
-                if(mCfg.gamepadCfg.targetKeyIndex[j] == i)
-                {
-                    physName = gInputKeyTab[j].name;
-                    break;
-                }
+                physIdx = j;
+                break;
             }
-            cJSON_AddStringToObject(keyMappings, n3dsName, physName);
         }
-        cJSON_AddItemToObject(root, "keyMappings", keyMappings);
+        cJSON_AddNumberToObject(keyMappings, n3dsName, physIdx);
     }
+    cJSON_AddItemToObject(root, "keyMappings", keyMappings);
 
     cJSON *turboKeys = cJSON_CreateObject();
     for(int i = 0; i < MAX_N3DS_KEY_TURBO_INDEX; ++i)
@@ -408,7 +400,7 @@ void Transmitter::SendFrame()
     }
     sockaddr_in addr = {};
     addr.sin_family = AF_INET;
-    addr.sin_port = htons(4950);
+    addr.sin_port = htons(N3DS_UDP_PORT);
     inet_pton(AF_INET, mCfg.ip, &addr.sin_addr);
     if(sendto(mSock, mFrameBuffer, 20, 0,
               reinterpret_cast<sockaddr *>(&addr), sizeof(addr)) < 0)
@@ -443,17 +435,17 @@ inline N3DS_KEY_INDEX Transmitter::GetOutputKeyIndex(INPUT_KEY_INDEX inKeyIndex)
 
 void Transmitter::GenerateFrame()
 {
-    mFrameData.hidPad = 0xfff;
-    mFrameData.circlePadState = 0x7ff7ff;
-    mFrameData.cppState = 0x80800081;
+    mFrameData.hidPad = HID_PAD_NEUTRAL;
+    mFrameData.circlePadState = CIRCLE_PAD_NEUTRAL;
+    mFrameData.cppState = CPP_STATE_NEUTRAL;
     mFrameData.irButtonsState = 0;
     mFrameData.interfaceButtons = 0;
-    mFrameData.touchScreenState = 0x2000000;
+    mFrameData.touchScreenState = TOUCH_SCREEN_NEUTRAL;
 
     KeyEventToFrameData();
     MotionEventToFrameData();
 
-    memset(mFrameBuffer, 0, 20);
+    memset(mFrameBuffer, 0, N3DS_FRAME_SIZE);
     memcpy(mFrameBuffer, &mFrameData.hidPad, 4);
     memcpy(mFrameBuffer + 4, &mFrameData.touchScreenState, 4);
     memcpy(mFrameBuffer + 8, &mFrameData.circlePadState, 4);
@@ -629,12 +621,12 @@ void Transmitter::HandleMotionEvent(GameActivityMotionEvent* motionEvent)
         int hy = static_cast<int>(GameActivityPointerAxes_getAxisValue(&motionEvent->pointers[0],
                                                                        AMOTION_EVENT_AXIS_HAT_Y));
         int lt = static_cast<int>(GameActivityPointerAxes_getAxisValue(&motionEvent->pointers[0],
-                                                                       AMOTION_EVENT_AXIS_BRAKE) * 1000);
+                                                                       AMOTION_EVENT_AXIS_BRAKE) * AXIS_INT_SCALE);
         int rt = static_cast<int>(GameActivityPointerAxes_getAxisValue(&motionEvent->pointers[0],
-                                                                       AMOTION_EVENT_AXIS_GAS) * 1000);
+                                                                       AMOTION_EVENT_AXIS_GAS) * AXIS_INT_SCALE);
         /* Support Right Joy-con */
-        if(static_cast<int>(mJoystick[JOYSTICK_R].x * 1000) == 0
-           &&  static_cast<int>(mJoystick[JOYSTICK_R].y * 1000) == 0)
+        if(static_cast<int>(mJoystick[JOYSTICK_R].x * AXIS_INT_SCALE) == 0
+           &&  static_cast<int>(mJoystick[JOYSTICK_R].y * AXIS_INT_SCALE) == 0)
         {
             mJoystick[JOYSTICK_R].x = GameActivityPointerAxes_getAxisValue(&motionEvent->pointers[0],
                                                                            AMOTION_EVENT_AXIS_RX);
@@ -654,6 +646,40 @@ void Transmitter::HandleMotionEvent(GameActivityMotionEvent* motionEvent)
               mJoystick[JOYSTICK_R].x, mJoystick[JOYSTICK_R].y,
              hx, hy, lt, rt);
 
+        /* D-pad key capture: intercept HAT axis rising edges */
+        if(mCaptureTargetN3dsKey != N3DS_KEY_INDEX_INVALID)
+        {
+            INPUT_KEY_INDEX capIdx = INPUT_KEY_INDEX_INVALID;
+            if(hx == 1 && mKeysState[INPUT_KEY_INDEX_RIGHT] != KEY_STATE_DOWN)
+                capIdx = INPUT_KEY_INDEX_RIGHT;
+            else if(hx == -1 && mKeysState[INPUT_KEY_INDEX_LEFT] != KEY_STATE_DOWN)
+                capIdx = INPUT_KEY_INDEX_LEFT;
+            else if(hy == 1 && mKeysState[INPUT_KEY_INDEX_DOWN] != KEY_STATE_DOWN)
+                capIdx = INPUT_KEY_INDEX_DOWN;
+            else if(hy == -1 && mKeysState[INPUT_KEY_INDEX_UP] != KEY_STATE_DOWN)
+                capIdx = INPUT_KEY_INDEX_UP;
+
+            if(capIdx != INPUT_KEY_INDEX_INVALID)
+            {
+                N3DS_KEY_INDEX oldTarget = mCfg.gamepadCfg.targetKeyIndex[capIdx];
+                if(oldTarget == mCaptureTargetN3dsKey)
+                {
+                    mCfg.gamepadCfg.targetKeyIndex[capIdx] = mCaptureTargetN3dsKey;
+                    mCaptureTargetN3dsKey = N3DS_KEY_INDEX_INVALID;
+                    callOnCaptureResult(gN3DsKeyTab[oldTarget].name,
+                                        gInputKeyTab[capIdx].name, false, nullptr);
+                }
+                else
+                {
+                    mConflictInputIdx = capIdx;
+                    mConflictOldN3dsIdx = oldTarget;
+                    callOnCaptureResult(gN3DsKeyTab[mCaptureTargetN3dsKey].name,
+                                        gInputKeyTab[capIdx].name, true,
+                                        gN3DsKeyTab[oldTarget].name);
+                }
+                hx = 0; hy = 0; // suppress normal D-pad state update
+            }
+        }
         switch(hx)
         {
             case 1:
@@ -725,7 +751,7 @@ void Transmitter::HandleInputEvent()
             return;
         }
         if(std::chrono::duration_cast<std::chrono::milliseconds>(
-               clock::now() - mLastSendTime).count() >= 10)
+               clock::now() - mLastSendTime).count() >= IDLE_FRAME_INTERVAL_MS)
         {
             SendFrame();
         }
@@ -773,21 +799,21 @@ void Transmitter::MotionEventToFrameData()
 
     if(lx != 0.0 || ly != 0.0)
     {
-        u32 x = (u32)(lx * CPAD_BOUND + 0x800);
-        u32 y = (u32)(ly * CPAD_BOUND + 0x800);
-        x = x >= 0xfff ? (lx < 0.0 ? 0x000 : 0xfff) : x;
-        y = y >= 0xfff ? (ly < 0.0 ? 0x000 : 0xfff) : y;
+        u32 x = (u32)(lx * CPAD_BOUND + CIRCLE_PAD_CENTER);
+        u32 y = (u32)(ly * CPAD_BOUND + CIRCLE_PAD_CENTER);
+        x = x >= CIRCLE_PAD_MAX ? (lx < 0.0 ? CIRCLE_PAD_MIN : CIRCLE_PAD_MAX) : x;
+        y = y >= CIRCLE_PAD_MAX ? (ly < 0.0 ? CIRCLE_PAD_MIN : CIRCLE_PAD_MAX) : y;
         mFrameData.circlePadState = (y << 12) | x;
     }
 
     if(rx != 0.0 || ry != 0.0 || mFrameData.irButtonsState != 0)
     {
         // We have to rotate the c-stick position 45°. Thanks, Nintendo.
-        u32 x = (u32)(M_SQRT1_2 * (rx + ry) * CPP_BOUND + 0x80);
-        u32 y = (u32)(M_SQRT1_2 * (ry - rx) * CPP_BOUND + 0x80);
-        x = x >= 0xff ? (rx < 0.0 ? 0x00 : 0xff) : x;
-        y = y >= 0xff ? (ry < 0.0 ? 0x00 : 0xff) : y;
-        mFrameData.cppState = (y << 24) | (x << 16) | (mFrameData.irButtonsState << 8) | 0x81;
+        u32 x = (u32)(M_SQRT1_2 * (rx + ry) * CPP_BOUND + CPP_CENTER);
+        u32 y = (u32)(M_SQRT1_2 * (ry - rx) * CPP_BOUND + CPP_CENTER);
+        x = x >= CPP_MAX ? (rx < 0.0 ? CPP_MIN : CPP_MAX) : x;
+        y = y >= CPP_MAX ? (ry < 0.0 ? CPP_MIN : CPP_MAX) : y;
+        mFrameData.cppState = (y << 24) | (x << 16) | (mFrameData.irButtonsState << 8) | CPP_MAGIC;
     }
 }
 
@@ -945,9 +971,12 @@ bool Transmitter::NeedTurbo()
 
 void Transmitter::SetKeyMapMode(int mode)
 {
-    if(mode != 0 && mode != 1) return;
+    if(mode != KEYMAP_MODE_SIMPLE && mode != KEYMAP_MODE_CUSTOM) return;
+    // Leaving custom mode: persist current mappings before reset
+    if(mCfg.gamepadCfg.keyMapMode == KEYMAP_MODE_CUSTOM && mode == KEYMAP_MODE_SIMPLE)
+        SaveConfig();
     mCfg.gamepadCfg.keyMapMode = mode;
-    if(mode == 0)
+    if(mode == KEYMAP_MODE_SIMPLE)
     {
         SetDefaultKeyMapValue();
         SetInvertAB(mCfg.gamepadCfg.invertAB);
@@ -961,7 +990,7 @@ void Transmitter::SetKeyMapMode(int mode)
         if(fd >= 0)
         {
             off_t sz = lseek(fd, 0, SEEK_END);
-            if(sz > 0 && sz < 65536)
+            if(sz > 0 && sz < CONFIG_FILE_MAX_SIZE)
             {
                 lseek(fd, 0, SEEK_SET);
                 char *buf = (char*)malloc((size_t)sz + 1);
@@ -979,16 +1008,11 @@ void Transmitter::SetKeyMapMode(int mode)
                             {
                                 for(int i = 0; i < MAX_N3DS_KEY_INDEX; ++i)
                                 {
-                                    cJSON *physName = cJSON_GetObjectItem(keyMappings, gN3DsKeyTab[i].name);
-                                    if(!cJSON_IsString(physName)) continue;
-                                    for(int j = 0; j < MAX_INPUT_KEY_INDEX; ++j)
-                                    {
-                                        if(strcmp(physName->valuestring, gInputKeyTab[j].name) == 0)
-                                        {
-                                            mCfg.gamepadCfg.targetKeyIndex[j] = static_cast<N3DS_KEY_INDEX>(i);
-                                            break;
-                                        }
-                                    }
+                                    cJSON *physIdx = cJSON_GetObjectItem(keyMappings, gN3DsKeyTab[i].name);
+                                    if(!cJSON_IsNumber(physIdx)) continue;
+                                    int j = physIdx->valueint;
+                                    if(j >= 0 && j < MAX_INPUT_KEY_INDEX)
+                                        mCfg.gamepadCfg.targetKeyIndex[j] = static_cast<N3DS_KEY_INDEX>(i);
                                 }
                             }
                             cJSON_Delete(root);

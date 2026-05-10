@@ -206,4 +206,33 @@ typedef struct AxisValue
     float y;
 }AxisValue;
 
+/* N3DS network protocol */
+#define N3DS_UDP_PORT           4950
+#define N3DS_FRAME_SIZE         20
+
+/* Neutral frame values */
+#define HID_PAD_NEUTRAL         0xfff
+#define CIRCLE_PAD_NEUTRAL      0x7ff7ff
+#define CPP_STATE_NEUTRAL       0x80800081
+#define TOUCH_SCREEN_NEUTRAL    0x2000000
+#define CIRCLE_PAD_CENTER       0x800
+#define CIRCLE_PAD_MAX          0xfff
+#define CIRCLE_PAD_MIN          0x000
+#define CPP_CENTER              0x80
+#define CPP_MAX                 0xff
+#define CPP_MIN                 0x00
+#define CPP_MAGIC               0x81
+
+enum KEYMAP_MODE
+{
+    KEYMAP_MODE_SIMPLE = 0,
+    KEYMAP_MODE_CUSTOM
+};
+
+/* Config and timing */
+#define CONFIG_FILE_MAX_SIZE    65536
+#define IDLE_FRAME_INTERVAL_MS  10
+#define DEFAULT_TURBO_INTERVAL  60
+#define AXIS_INT_SCALE          1000
+
 #endif //INPUTREDIRECTIONCLIENT_ANDROID_GAMEPAD_H
