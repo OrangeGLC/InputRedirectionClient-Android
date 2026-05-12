@@ -353,3 +353,13 @@ Java_com_jingrong_inputredirectionclient_1android_MainActivity_resolveKeyConflic
 {
     Transmitter::GetInstance()->ResolveKeyConflict(accept);
 }
+
+extern "C"
+JNIEXPORT jstring JNICALL
+Java_com_jingrong_inputredirectionclient_1android_MainActivity_getInputKeyName(
+        JNIEnv *env, jobject thiz, jint inputIdx)
+{
+    if (inputIdx < 0 || inputIdx >= MAX_INPUT_KEY_INDEX)
+        return env->NewStringUTF("");
+    return env->NewStringUTF(gInputKeyTab[inputIdx].name);
+}

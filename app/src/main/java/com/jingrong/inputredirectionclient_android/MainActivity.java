@@ -91,6 +91,7 @@ public class MainActivity extends GameActivity {
     public native void enterKeyCapture(int n3dsKeyIndex);
     public native void exitKeyCapture();
     public native void resolveKeyConflict(boolean accept);
+    public native String getInputKeyName(int inputIdx);
     public void updateUI()
     {
         runOnUiThread(()-> {
@@ -181,7 +182,7 @@ public class MainActivity extends GameActivity {
                 String physName = N3DS_KEY_NAMES[n3dsIdx]; // default
                 for (int physIdx = 0; physIdx < MAX_INPUT_KEY_INDEX; physIdx++) {
                     if (getKeyMapping(physIdx) == n3dsIdx) {
-                        physName = INPUT_KEY_NAMES[physIdx];
+                        physName = getInputKeyName(physIdx);
                         break;
                     }
                 }
@@ -673,12 +674,6 @@ public class MainActivity extends GameActivity {
     private Switch swSwapSticksSimple;
     private Button[] mKeyMapEdits = new Button[17];
     private int mCapturingN3dsIdx = -1;
-    // Physical key names (matches gInputKeyTab order in Gamepad.h)
-    private static final String[] INPUT_KEY_NAMES = {
-        "A", "B", "X", "Y", "SELECT", "START", "L", "R", "ZL", "ZR",
-        "L3", "R3", "+↑", "+↓", "+←", "+→",
-        "HOME", "SHARE", "SCRSHOT", "JCL_UP", "JCL_DOWN", "JCL_LEFT", "JCL_RIGHT"
-    };
     // N3DS key names (matches gN3DsKeyTab order in Gamepad.h)
     private static final String[] N3DS_KEY_NAMES = {
         "A", "B", "X", "Y", "L", "R", "ZL", "ZR",
@@ -706,7 +701,7 @@ public class MainActivity extends GameActivity {
 
     private static final int KEYMAP_MODE_SIMPLE = 0;
     private static final int KEYMAP_MODE_CUSTOM = 1;
-    private static final int MAX_INPUT_KEY_INDEX = 22; // mirrors C++ INPUT_KEY_INDEX_INVALID
+    private static final int MAX_INPUT_KEY_INDEX = 23; // mirrors C++ INPUT_KEY_INDEX_INVALID
     private static final int MAX_N3DS_KEY_TURBO_INDEX = 8;
     private static final int TURBO_INTERVAL_MIN = 50;
     private static final int TURBO_INTERVAL_MAX = 500;

@@ -168,10 +168,10 @@ void Transmitter::SetDefaultKeyMapValue()
                 mCfg.gamepadCfg.targetKeyIndex[i] = N3DS_KEY_INDEX_LEFT;
                 break;
             case INPUT_KEY_INDEX_R3:
-                mCfg.gamepadCfg.targetKeyIndex[i] = N3DS_KEY_INDEX_R;
+                mCfg.gamepadCfg.targetKeyIndex[i] = N3DS_KEY_INDEX_INVALID;
                 break;
             case INPUT_KEY_INDEX_L3:
-                mCfg.gamepadCfg.targetKeyIndex[i] = N3DS_KEY_INDEX_L;
+                mCfg.gamepadCfg.targetKeyIndex[i] = N3DS_KEY_INDEX_INVALID;
                 break;
             case INPUT_KEY_INDEX_HOME:
                 mCfg.gamepadCfg.targetKeyIndex[i] = N3DS_KEY_INDEX_HOME;
@@ -180,19 +180,19 @@ void Transmitter::SetDefaultKeyMapValue()
                 mCfg.gamepadCfg.targetKeyIndex[i] = N3DS_KEY_INDEX_POWER;
                 break;
             case INPUT_KEY_INDEX_SCRSHOT:
-                mCfg.gamepadCfg.targetKeyIndex[i] = N3DS_KEY_INDEX_POWER;
+                mCfg.gamepadCfg.targetKeyIndex[i] = N3DS_KEY_INDEX_INVALID;
                 break;
             case INPUT_KEY_INDEX_JCL_UP:
-                mCfg.gamepadCfg.targetKeyIndex[i] = N3DS_KEY_INDEX_UP;
+                mCfg.gamepadCfg.targetKeyIndex[i] = N3DS_KEY_INDEX_INVALID;
                 break;
             case INPUT_KEY_INDEX_JCL_DOWN:
-                mCfg.gamepadCfg.targetKeyIndex[i] = N3DS_KEY_INDEX_DOWN;
+                mCfg.gamepadCfg.targetKeyIndex[i] = N3DS_KEY_INDEX_INVALID;
                 break;
             case INPUT_KEY_INDEX_JCL_LEFT:
-                mCfg.gamepadCfg.targetKeyIndex[i] = N3DS_KEY_INDEX_LEFT;
+                mCfg.gamepadCfg.targetKeyIndex[i] = N3DS_KEY_INDEX_INVALID;
                 break;
             case INPUT_KEY_INDEX_JCL_RIGHT:
-                mCfg.gamepadCfg.targetKeyIndex[i] = N3DS_KEY_INDEX_RIGHT;
+                mCfg.gamepadCfg.targetKeyIndex[i] = N3DS_KEY_INDEX_INVALID;
                 break;
             default:
                 ALOGE("Invalid index %d", i);
@@ -487,6 +487,7 @@ void Transmitter::KeyEventToFrameData()
         if(mKeysState[i]==KEY_STATE_DOWN)
         {
             N3DS_KEY_INDEX out = mCfg.gamepadCfg.targetKeyIndex[i];
+            if(out == N3DS_KEY_INDEX_INVALID) continue;
             if(out < MAX_N3DS_KEY_TURBO_INDEX &&
                 mCfg.gamepadCfg.turboMode[out] == TURBO_MODE_FULL &&
                 mTurboActive[out])
@@ -565,10 +566,30 @@ void Transmitter::HandleKeyEvent(GameActivityKeyEvent* keyEvent)
             if(oldTarget == mCaptureTargetN3dsKey)
             {
                 // No conflict: same target, just update
-                mCfg.gamepadCfg.targetKeyIndex[inIndex] = mCaptureTargetN3dsKey;
+                N3DS_KEY_INDEX target = mCaptureTargetN3dsKey;
+                mCfg.gamepadCfg.targetKeyIndex[inIndex] = target;
                 SaveConfig();
                 mCaptureTargetN3dsKey = N3DS_KEY_INDEX_INVALID;
-                callOnCaptureResult(gN3DsKeyTab[oldTarget].name,
+                callOnCaptureResult(gN3DsKeyTab[target].name,
+                                    gInputKeyTab[inIndex].name, false, nullptr);
+            }
+            else if(oldTarget == N3DS_KEY_INDEX_INVALID)
+            {
+                // Previously unmapped key: assign directly, displace old occupant
+                N3DS_KEY_INDEX target = mCaptureTargetN3dsKey;
+                mCfg.gamepadCfg.targetKeyIndex[inIndex] = target;
+                for(int i = 0; i < MAX_INPUT_KEY_INDEX; ++i)
+                {
+                    if(i != inIndex
+                        && mCfg.gamepadCfg.targetKeyIndex[i] == target)
+                    {
+                        mCfg.gamepadCfg.targetKeyIndex[i] = N3DS_KEY_INDEX_INVALID;
+                        break;
+                    }
+                }
+                SaveConfig();
+                mCaptureTargetN3dsKey = N3DS_KEY_INDEX_INVALID;
+                callOnCaptureResult(gN3DsKeyTab[target].name,
                                     gInputKeyTab[inIndex].name, false, nullptr);
             }
             else
@@ -664,9 +685,27 @@ void Transmitter::HandleMotionEvent(GameActivityMotionEvent* motionEvent)
                 N3DS_KEY_INDEX oldTarget = mCfg.gamepadCfg.targetKeyIndex[capIdx];
                 if(oldTarget == mCaptureTargetN3dsKey)
                 {
-                    mCfg.gamepadCfg.targetKeyIndex[capIdx] = mCaptureTargetN3dsKey;
+                    N3DS_KEY_INDEX target = mCaptureTargetN3dsKey;
+                    mCfg.gamepadCfg.targetKeyIndex[capIdx] = target;
                     mCaptureTargetN3dsKey = N3DS_KEY_INDEX_INVALID;
-                    callOnCaptureResult(gN3DsKeyTab[oldTarget].name,
+                    callOnCaptureResult(gN3DsKeyTab[target].name,
+                                        gInputKeyTab[capIdx].name, false, nullptr);
+                }
+                else if(oldTarget == N3DS_KEY_INDEX_INVALID)
+                {
+                    N3DS_KEY_INDEX target = mCaptureTargetN3dsKey;
+                    mCfg.gamepadCfg.targetKeyIndex[capIdx] = target;
+                    for(int i = 0; i < MAX_INPUT_KEY_INDEX; ++i)
+                    {
+                        if(i != capIdx
+                            && mCfg.gamepadCfg.targetKeyIndex[i] == target)
+                        {
+                            mCfg.gamepadCfg.targetKeyIndex[i] = N3DS_KEY_INDEX_INVALID;
+                            break;
+                        }
+                    }
+                    mCaptureTargetN3dsKey = N3DS_KEY_INDEX_INVALID;
+                    callOnCaptureResult(gN3DsKeyTab[target].name,
                                         gInputKeyTab[capIdx].name, false, nullptr);
                 }
                 else
@@ -1094,7 +1133,6 @@ void Transmitter::ResolveKeyConflict(bool accept)
             mCfg.gamepadCfg.targetKeyIndex[oldPhysIdx] = mConflictOldN3dsIdx;
 
         SaveConfig();
-        updateUI(); // refresh after swap
     }
     // Exit capture mode in both cases
     mCaptureTargetN3dsKey = N3DS_KEY_INDEX_INVALID;
