@@ -25,6 +25,9 @@ typedef struct FrameData
 class Transmitter {
 
 public:
+#ifdef UNIT_TESTING
+    friend class TransmitterTestAccess;
+#endif
     static Transmitter *_singleton;
     enum RetVal {OK, NOK};
     static Transmitter* GetInstance();
@@ -88,8 +91,8 @@ private:
     INPUT_KEY_INDEX mConflictInputIdx = INPUT_KEY_INDEX_INVALID;
     N3DS_KEY_INDEX mConflictOldN3dsIdx = N3DS_KEY_INDEX_INVALID;
     using clock = std::chrono::high_resolution_clock;
-    typeof(clock::now()) mLastTurboTime[MAX_N3DS_KEY_TURBO_INDEX];
-    typeof(clock::now()) mLastSendTime;
+    decltype(clock::now()) mLastTurboTime[MAX_N3DS_KEY_TURBO_INDEX];
+    decltype(clock::now()) mLastSendTime;
     Config mCfg;
     KEY_STATE mKeysState[MAX_INPUT_KEY_INDEX];
     AxisValue mJoystick[MAX_JOYSTICK_INDEX];

@@ -86,6 +86,45 @@ dependencies {
     androidTestImplementation libs.espresso.core
 }
 
+// ---- CppUTest: run host-side native unit tests before release build ----
+task runCppUTest {
+    description = 'Build and run CppUTest unit tests for native code'
+    group = 'verification'
+
+    doLast {
+        def testSrcDir = file('src/main/cpp/tests')
+        def buildDir = file("${testSrcDir}/build")
+
+        buildDir.mkdirs()
+
+        // Configure cmake (skip if already configured)
+        if (!file("${buildDir}/Makefile").exists()) {
+            logger.lifecycle('CppUTest: configuring cmake...')
+            exec {
+                workingDir = buildDir
+                executable = 'cmake'
+                args = ['..']
+            }
+        }
+
+        // Build tests
+        logger.lifecycle('CppUTest: building tests...')
+        exec {
+            workingDir = buildDir
+            executable = 'make'
+            args = ['-j', Runtime.runtime.availableProcessors().toString()]
+        }
+
+        // Run tests (non-zero exit = failure, stops the build)
+        logger.lifecycle('CppUTest: running tests...')
+        exec {
+            workingDir = buildDir
+            executable = './transmitter_tests'
+        }
+        logger.lifecycle('CppUTest: all tests passed.')
+    }
+}
+
 // Auto-build ScrCtl.dex from scrctl package classes after Java compilation
 afterEvaluate {
     task buildScrCtlDex {
@@ -141,4 +180,7 @@ afterEvaluate {
     tasks.named('compileDebugJavaWithJavac').configure {
         finalizedBy 'buildScrCtlDex'
     }
+
+    // CppUTest must pass before release APK assembly
+    tasks.named('assembleRelease').configure { dependsOn 'runCppUTest' }
 }
