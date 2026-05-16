@@ -1,10 +1,14 @@
 #pragma once
 #include "Transmitter.h"
 #include "Gamepad.h"
+#include "JNIAdapt.h"
 #include <string>
+#include <chrono>
 
 extern std::string gCfgPath;
 extern struct android_app *gApp;
+
+using tp_clock = std::chrono::high_resolution_clock;
 
 class TransmitterTestAccess {
 public:
@@ -39,4 +43,24 @@ public:
         t->mConflictInputIdx = INPUT_KEY_INDEX_INVALID;
         t->mConflictOldN3dsIdx = N3DS_KEY_INDEX_INVALID;
     }
+
+    // Turbo state manipulation for functional tests
+    static void SetTurboMarkAt(Transmitter* t, int idx, bool val) {
+        t->mTurboMark[idx] = val;
+    }
+    static bool GetTurboMarkAt(Transmitter* t, int idx) {
+        return t->mTurboMark[idx];
+    }
+    static void SetLastTurboTimeAt(Transmitter* t, int idx, decltype(tp_clock::now()) tp) {
+        t->mLastTurboTime[idx] = tp;
+    }
+    static void SetTurboActiveAt(Transmitter* t, int idx, bool val) {
+        t->mTurboActive[idx] = val;
+    }
+    static bool GetTurboActiveAt(Transmitter* t, int idx) {
+        return t->mTurboActive[idx];
+    }
+
+    // Capture tracking globals reset (defined in main.cpp)
+    static void ResetCaptureTracking();
 };

@@ -79,6 +79,13 @@ typedef struct N3dsKeyInfo
     const CODE_OPERATE_OBJ obj;
 }N3dsKeyInfo;
 
+typedef enum CONTROLLER_TYPE
+{
+    CONTROLLER_TYPE_XBOX,
+    CONTROLLER_TYPE_JOYCON,
+    CONTROLLER_TYPE_UNKNOWN
+}CONTROLLER_TYPE;
+
 typedef enum N3DS_KEY_INDEX
 {
     N3DS_KEY_INDEX_A = 0,
@@ -222,12 +229,6 @@ typedef struct AxisValue
 #define CPP_MAX                 0xff
 #define CPP_MIN                 0x00
 #define CPP_MAGIC               0x81
-
-enum KEYMAP_MODE
-{
-    KEYMAP_MODE_SIMPLE = 0,
-    KEYMAP_MODE_CUSTOM
-};
 
 /* Config and timing */
 #define CONFIG_FILE_MAX_SIZE    65536

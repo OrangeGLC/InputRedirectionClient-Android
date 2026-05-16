@@ -6,6 +6,7 @@
 #define INPUTREDIRECTIONCLIENT_ANDROID_TRANSMITTER_H
 #include <jni.h>
 #include <chrono>
+#include <mutex>
 #include <game-activity/native_app_glue/android_native_app_glue.h>
 #include "Config.h"
 typedef unsigned int u32;
@@ -64,7 +65,8 @@ public:
     int GetKeyMapping(int inputIdx);
     void EnterKeyCapture(int n3dsKeyIndex);
     void ExitKeyCapture();
-    void ResolveKeyConflict(bool accept);
+    void ResolveKeyConflict(bool accept, int sessionId);
+    int GetCaptureSessionId();
     void SetTurbo(N3DS_KEY_INDEX index, bool flg);
     bool GetTurbo(N3DS_KEY_INDEX index);
     void SetTurboInterval(u32 ms);
@@ -77,6 +79,7 @@ public:
     bool GetPowerMap();
     void SetPowerOffMap(bool flg);
     bool GetPowerOffMap();
+    void AdaptToCtrlType(CONTROLLER_TYPE type);
 private:
     Transmitter(struct android_app *app);
     ~Transmitter();
@@ -90,6 +93,13 @@ private:
     N3DS_KEY_INDEX mCaptureTargetN3dsKey = N3DS_KEY_INDEX_INVALID;
     INPUT_KEY_INDEX mConflictInputIdx = INPUT_KEY_INDEX_INVALID;
     N3DS_KEY_INDEX mConflictOldN3dsIdx = N3DS_KEY_INDEX_INVALID;
+    int mCaptureSessionId = 0;
+    int mConflictSessionId = 0;
+    std::mutex mCaptureMutex;
+    bool IsCapturableKey(INPUT_KEY_INDEX idx);
+    bool IsInputKeyRelevantForCtrlType(INPUT_KEY_INDEX idx, CONTROLLER_TYPE type);
+    CONTROLLER_TYPE DetectCtrlTypeFromKey(INPUT_KEY_INDEX idx);
+    INPUT_KEY_INDEX FindPhysKeyForN3dsKey(N3DS_KEY_INDEX n3dsKey, CONTROLLER_TYPE type);
     using clock = std::chrono::high_resolution_clock;
     decltype(clock::now()) mLastTurboTime[MAX_N3DS_KEY_TURBO_INDEX];
     decltype(clock::now()) mLastSendTime;

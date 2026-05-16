@@ -6,6 +6,9 @@
     <string name="mode_custom">Custom</string>
     <string name="swap_sticks">L Stick⇌R Stick</string>
     <string name="capture_hint">Press a gamepad button…</string>
+    <string name="capture_prompt_title">Key Capture</string>
+    <string name="capture_prompt_msg">Please press a controller button</string>
+    <string name="capture_prompt_cancel">Cancel</string>
     <string name="conflict_title">Key Conflict</string>
     <string name="conflict_msg">%1$s is already mapped to 3DS %2$s. Proceeding will remap 3DS %2$s to another free key. Continue?</string>
     <string name="conflict_cancel">Cancel</string>

@@ -356,9 +356,17 @@ Java_com_jingrong_inputredirectionclient_1android_MainActivity_exitKeyCapture(
 extern "C"
 JNIEXPORT void JNICALL
 Java_com_jingrong_inputredirectionclient_1android_MainActivity_resolveKeyConflict(
-        JNIEnv *env, jobject thiz, jboolean accept)
+        JNIEnv *env, jobject thiz, jboolean accept, jint sessionId)
 {
-    Transmitter::GetInstance()->ResolveKeyConflict(accept);
+    Transmitter::GetInstance()->ResolveKeyConflict(accept, static_cast<int>(sessionId));
+}
+
+extern "C"
+JNIEXPORT jint JNICALL
+Java_com_jingrong_inputredirectionclient_1android_MainActivity_getCaptureSessionId(
+        JNIEnv *env, jobject thiz)
+{
+    return Transmitter::GetInstance()->GetCaptureSessionId();
 }
 
 extern "C"

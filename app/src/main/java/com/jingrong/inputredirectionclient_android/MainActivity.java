@@ -90,7 +90,8 @@ public class MainActivity extends GameActivity {
     public native int getKeyMapping(int inputIdx);
     public native void enterKeyCapture(int n3dsKeyIndex);
     public native void exitKeyCapture();
-    public native void resolveKeyConflict(boolean accept);
+    public native void resolveKeyConflict(boolean accept, int sessionId);
+    public native int getCaptureSessionId();
     public native String getInputKeyName(int inputIdx);
     public void updateUI()
     {
@@ -119,28 +120,30 @@ public class MainActivity extends GameActivity {
                                 boolean conflict, String conflictN3dsName) {
         runOnUiThread(() -> {
             if (!conflict) {
-                // Success: mapping applied, just refresh
                 mCapturingN3dsIdx = -1;
                 updateKeyMappingUI();
             } else {
-                // Conflict: show dialog
+                mConflictSessionId = getCaptureSessionId();
                 showConflictDialog(n3dsName, physName, conflictN3dsName);
             }
         });
     }
 
     private void showConflictDialog(String n3dsName, String physName, String conflictN3dsName) {
+        final int sessionId = mConflictSessionId;
         new AlertDialog.Builder(this)
             .setTitle(R.string.conflict_title)
             .setMessage(getString(R.string.conflict_msg, physName, conflictN3dsName))
             .setNegativeButton(R.string.conflict_cancel, (d, w) -> {
-                resolveKeyConflict(false);
+                resolveKeyConflict(false, sessionId);
                 mCapturingN3dsIdx = -1;
+                mConflictSessionId = 0;
                 updateKeyMappingUI();
             })
             .setPositiveButton(R.string.conflict_continue, (d, w) -> {
-                resolveKeyConflict(true);
+                resolveKeyConflict(true, sessionId);
                 mCapturingN3dsIdx = -1;
+                mConflictSessionId = 0;
                 updateKeyMappingUI();
             })
             .setCancelable(false)
@@ -149,6 +152,11 @@ public class MainActivity extends GameActivity {
 
     private void switchKeyMapMode(int mode) {
         mUpdatingKeyMapUI = true;
+        if (mCapturingN3dsIdx >= 0) {
+            exitKeyCapture();
+            mCapturingN3dsIdx = -1;
+            mConflictSessionId = 0;
+        }
         setKeyMapMode(mode);
         updateKeyMappingUI();
         mUpdatingKeyMapUI = false;
@@ -430,6 +438,7 @@ public class MainActivity extends GameActivity {
                 if (mCapturingN3dsIdx == n3dsIdx) {
                     // Cancel capture
                     mCapturingN3dsIdx = -1;
+                    mConflictSessionId = 0;
                     exitKeyCapture();
                     updateKeyMappingUI();
                 } else {
@@ -438,7 +447,10 @@ public class MainActivity extends GameActivity {
                         exitKeyCapture();
                     }
                     mCapturingN3dsIdx = n3dsIdx;
+                    mConflictSessionId = 0;
                     enterKeyCapture(n3dsIdx);
+                    Toast.makeText(MainActivity.this,
+                        R.string.capture_prompt_msg, Toast.LENGTH_SHORT).show();
                     updateKeyMappingUI();
                 }
             });
@@ -674,6 +686,7 @@ public class MainActivity extends GameActivity {
     private Switch swSwapSticksSimple;
     private Button[] mKeyMapEdits = new Button[17];
     private int mCapturingN3dsIdx = -1;
+    private int mConflictSessionId = 0;
     // N3DS key names (matches gN3DsKeyTab order in Gamepad.h)
     private static final String[] N3DS_KEY_NAMES = {
         "A", "B", "X", "Y", "L", "R", "ZL", "ZR",

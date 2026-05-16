@@ -41,6 +41,7 @@ add_executable(transmitter_tests
     TestTransmitterKeyMapping.cpp
     TestTransmitterFrame.cpp
     TestTransmitterIO.cpp
+    TestTransmitterFunctional.cpp
 )
 
 target_include_directories(transmitter_tests PRIVATE ${CPPUTEST_INCLUDE_DIR})

@@ -29,14 +29,20 @@ typedef enum TURBO_MODE
     TURBO_MODE_FULL,
 }TURBO_MODE;
 
+typedef enum KEYMAP_MODE
+{
+    KEYMAP_MODE_SIMPLE = 0,
+    KEYMAP_MODE_CUSTOM
+}KEYMAP_MODE;
+
 /* NOTE: REMEMBER to set default value in
  * Transmiter::SetDefaultConfigValue
  * */
 typedef struct GamepadCfg
 {
     float deadZone[MAX_JOYSTICK_INDEX];
-    int keyMapMode;             // 0=简单, 1=自定义
-    bool swapJoysticks;         // 左右摇杆交换
+    KEYMAP_MODE keyMapMode;
+    bool swapJoysticks;
     bool invertAB;
     bool invertXY;
     bool mapHome;
@@ -46,6 +52,7 @@ typedef struct GamepadCfg
     TURBO_STATE turbo[MAX_N3DS_KEY_TURBO_INDEX]; /* Target keys on N3DS */
     u32 turboIntervalMs;
     TURBO_MODE turboMode[MAX_N3DS_KEY_TURBO_INDEX];
+    CONTROLLER_TYPE ctrlType;
 }GamepadCfg;
 
 typedef struct Config

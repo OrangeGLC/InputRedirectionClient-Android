@@ -131,7 +131,7 @@ TEST(TransmitterKeyMapping, ResolveConflict_Accept_SwapsMappings)
     TransmitterTestAccess::SetCaptureTarget(tr, N3DS_KEY_INDEX_A);
     TransmitterTestAccess::SetConflictState(tr, INPUT_KEY_INDEX_X, N3DS_KEY_INDEX_B);
 
-    tr->ResolveKeyConflict(true);
+    tr->ResolveKeyConflict(true, 0);
 
     // After accept: X -> A, the old occupant of A gets B
     CHECK_EQUAL(N3DS_KEY_INDEX_A, tr->GetKeyMapping(INPUT_KEY_INDEX_X));
@@ -146,7 +146,7 @@ TEST(TransmitterKeyMapping, ResolveConflict_Reject_NoMappingChange)
     TransmitterTestAccess::SetCaptureTarget(tr, N3DS_KEY_INDEX_A);
     TransmitterTestAccess::SetConflictState(tr, INPUT_KEY_INDEX_X, N3DS_KEY_INDEX_B);
 
-    tr->ResolveKeyConflict(false);
+    tr->ResolveKeyConflict(false, 0);
 
     // Mapping should NOT change
     CHECK_EQUAL(N3DS_KEY_INDEX_B, tr->GetKeyMapping(INPUT_KEY_INDEX_X));
@@ -160,7 +160,7 @@ TEST(TransmitterKeyMapping, ResolveConflict_NoOpWhenNotCapturing)
     int before = tr->GetKeyMapping(INPUT_KEY_INDEX_X);
     // No capture target set
     TransmitterTestAccess::SetConflictState(tr, INPUT_KEY_INDEX_X, N3DS_KEY_INDEX_B);
-    tr->ResolveKeyConflict(true);
+    tr->ResolveKeyConflict(true, 0);
     CHECK_EQUAL(before, tr->GetKeyMapping(INPUT_KEY_INDEX_X));
 }
 
@@ -171,6 +171,6 @@ TEST(TransmitterKeyMapping, ResolveConflict_NoOpWhenNoConflict)
     // Capture target set but no conflict
     TransmitterTestAccess::SetCaptureTarget(tr, N3DS_KEY_INDEX_A);
     TransmitterTestAccess::ClearConflictState(tr);
-    tr->ResolveKeyConflict(true);
+    tr->ResolveKeyConflict(true, 0);
     CHECK_EQUAL(before, tr->GetKeyMapping(INPUT_KEY_INDEX_X));
 }
