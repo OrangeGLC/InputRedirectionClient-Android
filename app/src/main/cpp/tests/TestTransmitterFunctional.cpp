@@ -1585,3 +1585,40 @@ TEST(TransmitterJoyConCapture, ConflictDialog_UsesArrowNamesForXboxDpad)
     // Bug: was "DOWN", should be "+↓"
     STRCMP_EQUAL("+↓", gLastCaptureConflictN3dsName);
 }
+
+// ---- Special button capture: HOME → physical HOME key ----
+
+TEST(TransmitterJoyConCapture, CaptureHome_ShowsCorrectPhysKeyName)
+{
+    // Capture N3DS HOME with Xbox Home button (keyCode 110)
+    tr->EnterKeyCapture(N3DS_KEY_INDEX_HOME);
+    GameActivityKeyEvent ev = {};
+    ev.keyCode = GAMEPAD_BUTTON_HOME;
+    ev.scanCode = 0;
+    ev.action = AKEY_EVENT_ACTION_DOWN;
+    ev.source = AINPUT_SOURCE_GAMEPAD;
+    tr->HandleKeyEvent(&ev);
+
+    // No conflict: HOME→HOME is default
+    CHECK_FALSE(gLastCaptureConflict);
+    // The phys key name should be "HOME" (gInputKeyTab[INPUT_KEY_INDEX_HOME])
+    STRCMP_EQUAL("HOME", gInputKeyTab[INPUT_KEY_INDEX_HOME].name);
+    // getKeyMapping(INPUT_KEY_INDEX_HOME) should return N3DS_KEY_INDEX_HOME
+    CHECK_EQUAL(N3DS_KEY_INDEX_HOME, tr->GetKeyMapping(INPUT_KEY_INDEX_HOME));
+}
+
+TEST(TransmitterJoyConCapture, CapturePower_ShowsCorrectPhysKeyName)
+{
+    // Capture N3DS POWER with Xbox Share button (keyCode 130)
+    tr->EnterKeyCapture(N3DS_KEY_INDEX_POWER);
+    GameActivityKeyEvent ev = {};
+    ev.keyCode = GAMEPAD_BUTTON_SHARE;
+    ev.scanCode = 0;
+    ev.action = AKEY_EVENT_ACTION_DOWN;
+    ev.source = AINPUT_SOURCE_GAMEPAD;
+    tr->HandleKeyEvent(&ev);
+
+    CHECK_FALSE(gLastCaptureConflict);
+    STRCMP_EQUAL("SHARE", gInputKeyTab[INPUT_KEY_INDEX_SHARE].name);
+    CHECK_EQUAL(N3DS_KEY_INDEX_POWER, tr->GetKeyMapping(INPUT_KEY_INDEX_SHARE));
+}

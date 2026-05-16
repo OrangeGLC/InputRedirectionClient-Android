@@ -5,6 +5,7 @@
     <string name="title_keymap">按键映射</string>
     <string name="mode_simple">简单</string>
     <string name="mode_custom">自定义</string>
+    <string name="mode_special">特殊</string>
     <string name="swap_sticks">左摇杆⇌右摇杆</string>
     <string name="capture_hint">请按下手柄按键</string>
     <string name="capture_prompt_title">按键捕获</string>
@@ -21,7 +22,7 @@
     <string name="title_spBtmap">3DS特殊按键映射</string>
     <string name="sw_txt_home">房子键</string>
     <string name="sw_txt_power">电源键</string>
-    <string name="sw_txt_poweroff">关机(长按电源)</string>
+    <string name="sw_txt_poweroff">关机</string>
     <string name="et_home">Logo键</string>
     <string name="et_share">分享(截图)键</string>
     <string name="et_l3r3">左右摇杆按下</string>

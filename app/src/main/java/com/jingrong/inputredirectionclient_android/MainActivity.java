@@ -109,9 +109,11 @@ public class MainActivity extends GameActivity {
             int interval = getTurboInterval();
             sbTurboInterval.setProgress(interval);
             etTurboInterval.setText(String.valueOf(interval));
-            etHome.setEnabled(getHomeMapEnable());
-            etPower.setEnabled(getPowerMapEnable());
-            etPowerOff.setEnabled(getPowerOffMapEnable());
+            btSpecialHome.setEnabled(getHomeMapEnable());
+            btSpecialPower.setEnabled(getPowerMapEnable());
+            btSpecialShut1.setEnabled(getPowerOffMapEnable());
+            btSpecialShut2.setEnabled(getPowerOffMapEnable());
+            updateSpecialButtons();
             updateKeyMappingUI();
         });
     }
@@ -130,25 +132,44 @@ public class MainActivity extends GameActivity {
         });
     }
 
+    private String getPhysNameForN3ds(int n3dsIdx) {
+        for (int i = 0; i < MAX_INPUT_KEY_INDEX; i++) {
+            if (getKeyMapping(i) == n3dsIdx) return getInputKeyName(i);
+        }
+        return "";
+    }
+
+    private void updateSpecialButtons() {
+        String homePhys = getPhysNameForN3ds(N3DS_KEY_INDEX_HOME);
+        btSpecialHome.setText(!homePhys.isEmpty() ? homePhys : "HOME");
+        String powerPhys = getPhysNameForN3ds(N3DS_KEY_INDEX_POWER);
+        btSpecialPower.setText(!powerPhys.isEmpty() ? powerPhys : "SHARE");
+        // SHUTDOWN: fixed display L3+R3, no dynamic update needed
+    }
+
     private void showConflictDialog(String n3dsName, String physName, String conflictN3dsName) {
         final int sessionId = mConflictSessionId;
-        new AlertDialog.Builder(this)
+        boolean isSpecial = conflictN3dsName.equals("HOME") || conflictN3dsName.equals("POWER")
+                         || conflictN3dsName.equals("POWEROFF");
+        AlertDialog.Builder b = new AlertDialog.Builder(this)
             .setTitle(R.string.conflict_title)
-            .setMessage(getString(R.string.conflict_msg, physName, conflictN3dsName))
+            .setMessage(isSpecial ? getString(R.string.conflict_special_msg, physName, conflictN3dsName)
+                                 : getString(R.string.conflict_msg, physName, conflictN3dsName))
             .setNegativeButton(R.string.conflict_cancel, (d, w) -> {
                 resolveKeyConflict(false, sessionId);
                 mCapturingN3dsIdx = -1;
                 mConflictSessionId = 0;
                 updateKeyMappingUI();
-            })
-            .setPositiveButton(R.string.conflict_continue, (d, w) -> {
+            });
+        if (!isSpecial) {
+            b.setPositiveButton(R.string.conflict_continue, (d, w) -> {
                 resolveKeyConflict(true, sessionId);
                 mCapturingN3dsIdx = -1;
                 mConflictSessionId = 0;
                 updateKeyMappingUI();
-            })
-            .setCancelable(false)
-            .show();
+            });
+        }
+        b.setCancelable(false).show();
     }
 
     private void switchKeyMapMode(int mode) {
@@ -158,7 +179,9 @@ public class MainActivity extends GameActivity {
             mCapturingN3dsIdx = -1;
             mConflictSessionId = 0;
         }
-        setKeyMapMode(mode);
+        if (mode != KEYMAP_MODE_SPECIAL) {
+            setKeyMapMode(mode);
+        }
         updateKeyMappingUI();
         mUpdatingKeyMapUI = false;
     }
@@ -166,16 +189,17 @@ public class MainActivity extends GameActivity {
     private void updateKeyMappingUI() {
         mUpdatingKeyMapUI = true;
 
-        int mode = getKeyMapMode();
-        // Mode tabs: TabLayout handles visual state automatically
-        com.google.android.material.tabs.TabLayout.Tab tab = tabMode.getTabAt(mode);
-        if (tab != null) tab.select();
+        int selTab = tabMode.getSelectedTabPosition();
+        int mode = (selTab == KEYMAP_MODE_SPECIAL) ? KEYMAP_MODE_SIMPLE : selTab;
 
         // Simple mode layout
-        layoutSimpleMode.setVisibility(mode == KEYMAP_MODE_SIMPLE ? View.VISIBLE : View.GONE);
+        layoutSimpleMode.setVisibility(selTab == KEYMAP_MODE_SIMPLE ? View.VISIBLE : View.GONE);
 
         // Custom mode layout
-        layoutCustomMode.setVisibility(mode == KEYMAP_MODE_CUSTOM ? View.VISIBLE : View.GONE);
+        layoutCustomMode.setVisibility(selTab == KEYMAP_MODE_CUSTOM ? View.VISIBLE : View.GONE);
+
+        // Special mode layout
+        layoutSpecialMode.setVisibility(selTab == KEYMAP_MODE_SPECIAL ? View.VISIBLE : View.GONE);
 
         // Swap joysticks (sync both switches, show correct one per mode)
         boolean swap = getSwapJoysticks();
@@ -280,14 +304,16 @@ public class MainActivity extends GameActivity {
         swHomeMap = findViewById(R.id.switch_home);
         swPowerMap = findViewById(R.id.switch_power);
         swPowerOffMap = findViewById(R.id.switch_shut);
-        etHome = findViewById(R.id.et_home);
-        etPower = findViewById(R.id.et_power);
-        etPowerOff = findViewById(R.id.et_shut);
+        btSpecialHome = findViewById(R.id.bt_special_home);
+        btSpecialPower = findViewById(R.id.bt_special_power);
+        btSpecialShut1 = findViewById(R.id.bt_special_shut1);
+        btSpecialShut2 = findViewById(R.id.bt_special_shut2);
 
         // Key mapping views
         tabMode = findViewById(R.id.tab_mode);
         layoutSimpleMode = findViewById(R.id.layout_simple_mode);
         layoutCustomMode = findViewById(R.id.layout_custom_mode);
+        layoutSpecialMode = findViewById(R.id.layout_special_mode);
         swSwapSticks = findViewById(R.id.switch_swap_sticks);
         swSwapSticksSimple = findViewById(R.id.switch_swap_sticks_simple);
         btResetMapping = findViewById(R.id.bt_reset_mapping);
@@ -395,7 +421,7 @@ public class MainActivity extends GameActivity {
             @Override
             public void onCheckedChanged(@NonNull CompoundButton compoundButton, boolean b) {
                 setHomeMapEnable(b);
-                etHome.setEnabled(b);
+                btSpecialHome.setEnabled(b);
             }
         });
 
@@ -403,7 +429,7 @@ public class MainActivity extends GameActivity {
             @Override
             public void onCheckedChanged(@NonNull CompoundButton compoundButton, boolean b) {
                 setPowerMapEnable(b);
-                etPower.setEnabled(b);
+                btSpecialPower.setEnabled(b);
             }
         });
 
@@ -411,7 +437,8 @@ public class MainActivity extends GameActivity {
             @Override
             public void onCheckedChanged(@NonNull CompoundButton compoundButton, boolean b) {
                 setPowerOffMapEnable(b);
-                etPowerOff.setEnabled(b);
+                btSpecialShut1.setEnabled(b);
+                btSpecialShut2.setEnabled(b);
             }
         });
 
@@ -477,18 +504,7 @@ public class MainActivity extends GameActivity {
             });
         }
 
-        etHome.setInputType(InputType.TYPE_NULL);
-        etHome.setFocusable(false);
-        etHome.setClickable(false);
-
-        etPower.setInputType(InputType.TYPE_NULL);
-        etPower.setFocusable(false);
-        etPower.setClickable(false);
-
-
-        etPowerOff.setInputType(InputType.TYPE_NULL);
-        etPowerOff.setFocusable(false);
-        etPowerOff.setClickable(false);
+        // Special buttons: display-only, show mapped key names (no capture)
 
         unzipFiles();
         checkUpdate();
@@ -696,13 +712,15 @@ public class MainActivity extends GameActivity {
     private Switch swHomeMap;
     private Switch swPowerMap;
     private Switch swPowerOffMap;
-    private EditText etHome;
-    private EditText etPower;
-    private EditText etPowerOff;
+    private Button btSpecialHome;
+    private Button btSpecialPower;
+    private Button btSpecialShut1;
+    private Button btSpecialShut2;
     // Key mapping UI
     private com.google.android.material.tabs.TabLayout tabMode;
     private LinearLayout layoutSimpleMode;
     private LinearLayout layoutCustomMode;
+    private LinearLayout layoutSpecialMode;
     private Switch swSwapSticks;
     private Switch swSwapSticksSimple;
     private Button btResetMapping;
@@ -732,10 +750,11 @@ public class MainActivity extends GameActivity {
     private static final int N3DS_KEY_INDEX_DOWN = 13;
     private static final int N3DS_KEY_INDEX_LEFT = 14;
     private static final int N3DS_KEY_INDEX_RIGHT = 15;
-    // N3DS_KEY_INDEX_SHUTDOWN = 16 (no mapping entry in UI)
+    private static final int N3DS_KEY_INDEX_SHUTDOWN = 16;
 
     private static final int KEYMAP_MODE_SIMPLE = 0;
     private static final int KEYMAP_MODE_CUSTOM = 1;
+    private static final int KEYMAP_MODE_SPECIAL = 2;
     private static final int MAX_INPUT_KEY_INDEX = 23; // mirrors C++ INPUT_KEY_INDEX_INVALID
     private static final int MAX_N3DS_KEY_TURBO_INDEX = 8;
     private static final int TURBO_INTERVAL_MIN = 50;

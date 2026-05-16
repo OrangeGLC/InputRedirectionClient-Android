@@ -4,6 +4,7 @@
     <string name="title_keymap">Key Mapping</string>
     <string name="mode_simple">Simple</string>
     <string name="mode_custom">Custom</string>
+    <string name="mode_special">Special</string>
     <string name="swap_sticks">L Stick⇌R Stick</string>
     <string name="capture_hint">Press a gamepad button…</string>
     <string name="capture_prompt_title">Key Capture</string>
@@ -15,12 +16,13 @@
     <string name="conflict_msg">%1$s is already mapped to 3DS %2$s. Proceeding will remap 3DS %2$s to another free key. Continue?</string>
     <string name="conflict_cancel">Cancel</string>
     <string name="conflict_continue">Continue</string>
+    <string name="conflict_special_msg">%1$s is a special button mapped to 3DS %2$s and cannot be remapped.</string>
     <string name="title_mappingswap">Mapping Swap</string>
     <string name="title_turbo">3DS Buttons Turbo</string>
     <string name="title_spBtmap">3DS Special Buttons Mapping</string>
     <string name="sw_txt_home">Home</string>
     <string name="sw_txt_power">Power</string>
-    <string name="sw_txt_poweroff">PowerOff</string>
+    <string name="sw_txt_poweroff">Shut</string>
     <string name="et_home">HOME</string>
     <string name="et_share">SHARE</string>
     <string name="et_l3r3">L3+R3</string>

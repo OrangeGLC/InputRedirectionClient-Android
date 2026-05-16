@@ -101,6 +101,8 @@ void Transmitter::SetDefaultConfigValue()
     mCfg.gamepadCfg.deadZone[JOYSTICK_R] = 0.05f;
     mCfg.gamepadCfg.keyMapMode = KEYMAP_MODE_SIMPLE;
     mCfg.gamepadCfg.ctrlType = CONTROLLER_TYPE_XBOX;
+    mCfg.gamepadCfg.shutKeys[0] = INPUT_KEY_INDEX_L3;
+    mCfg.gamepadCfg.shutKeys[1] = INPUT_KEY_INDEX_R3;
     mCfg.gamepadCfg.swapJoysticks = false;
     mCfg.gamepadCfg.invertAB = false;
     mCfg.gamepadCfg.invertXY = false;
@@ -263,6 +265,13 @@ void Transmitter::ParseJsonConfig(cJSON *root)
         }
     }
 
+    cJSON *ck1 = cJSON_GetObjectItem(root, "comboKey1");
+    if(cJSON_IsNumber(ck1) && ck1->valueint >= 0 && ck1->valueint < MAX_INPUT_KEY_INDEX)
+        mCfg.gamepadCfg.shutKeys[0] = static_cast<INPUT_KEY_INDEX>(ck1->valueint);
+    cJSON *ck2 = cJSON_GetObjectItem(root, "comboKey2");
+    if(cJSON_IsNumber(ck2) && ck2->valueint >= 0 && ck2->valueint < MAX_INPUT_KEY_INDEX)
+        mCfg.gamepadCfg.shutKeys[1] = static_cast<INPUT_KEY_INDEX>(ck2->valueint);
+
     cJSON *keyMappings = cJSON_GetObjectItem(root, "keyMappings");
     if(cJSON_IsObject(keyMappings) && mCfg.gamepadCfg.keyMapMode == KEYMAP_MODE_CUSTOM)
     {
@@ -367,6 +376,8 @@ Transmitter::RetVal Transmitter::SaveConfig()
     cJSON_AddBoolToObject(root, "invertAB", mCfg.gamepadCfg.invertAB);
     cJSON_AddBoolToObject(root, "invertXY", mCfg.gamepadCfg.invertXY);
     cJSON_AddNumberToObject(root, "ctrlType", static_cast<int>(mCfg.gamepadCfg.ctrlType));
+    cJSON_AddNumberToObject(root, "shutKey1", static_cast<int>(mCfg.gamepadCfg.shutKeys[0]));
+    cJSON_AddNumberToObject(root, "comboKey2", static_cast<int>(mCfg.gamepadCfg.shutKeys[1]));
     cJSON_AddBoolToObject(root, "mapHome", mCfg.gamepadCfg.mapHome);
     cJSON_AddBoolToObject(root, "mapPower", mCfg.gamepadCfg.mapPower);
     cJSON_AddBoolToObject(root, "mapShut", mCfg.gamepadCfg.mapShut);
@@ -540,9 +551,12 @@ void Transmitter::KeyEventToFrameData()
             OutputKeyIndexToFrameData(out);
         }
     }
-    /* Check if need power off (L3 + R3 press down meanwhile) */
-    if(mKeysState[INPUT_KEY_INDEX_L3] == KEY_STATE_DOWN &&
-        mKeysState[INPUT_KEY_INDEX_R3] == KEY_STATE_DOWN &&
+    /* Check if need power off (combo keys pressed) */
+    INPUT_KEY_INDEX ck1 = mCfg.gamepadCfg.shutKeys[0];
+    INPUT_KEY_INDEX ck2 = mCfg.gamepadCfg.shutKeys[1];
+    if(ck1 < MAX_INPUT_KEY_INDEX && ck2 < MAX_INPUT_KEY_INDEX &&
+        mKeysState[ck1] == KEY_STATE_DOWN &&
+        mKeysState[ck2] == KEY_STATE_DOWN &&
         mCfg.gamepadCfg.mapShut )
         OutputKeyIndexToFrameData(N3DS_KEY_INDEX_SHUTDOWN);
 }
@@ -761,6 +775,26 @@ void Transmitter::HandleKeyEvent(GameActivityKeyEvent* keyEvent)
         {
             if(keyEvent->action == AKEY_EVENT_ACTION_DOWN && keyEvent->repeatCount == 0)
                 mTurboActive[outIndex] = !mTurboActive[outIndex];
+            return;
+        }
+
+        /* Special combo capture: intercept up to 2 keys for HOME/POWER/SHUTDOWN */
+        if(mSpecialTarget != N3DS_KEY_INDEX_INVALID
+            && keyEvent->action == AKEY_EVENT_ACTION_DOWN
+            && keyEvent->repeatCount == 0 && IsCapturableKey(inIndex))
+        {
+            INPUT_KEY_INDEX* keys = GetComboKeysForTarget(mSpecialTarget);
+            if(keys && mSpecialKeyCount < 2)
+            {
+                keys[mSpecialKeyCount++] = inIndex;
+                if(mSpecialKeyCount >= 2)
+                {
+                    mSpecialTarget = N3DS_KEY_INDEX_INVALID;
+                    mSpecialKeyCount = 0;
+                    SaveConfig();
+                }
+                updateUI();
+            }
             return;
         }
 
@@ -1342,8 +1376,43 @@ void Transmitter::ResetKeyMapping()
     SetInvertAB(mCfg.gamepadCfg.invertAB);
     SetInvertXY(mCfg.gamepadCfg.invertXY);
     AdaptToCtrlType(mCfg.gamepadCfg.ctrlType);
+    mCfg.gamepadCfg.shutKeys[0] = INPUT_KEY_INDEX_L3;
+    mCfg.gamepadCfg.shutKeys[1] = INPUT_KEY_INDEX_R3;
     SaveConfig();
     updateUI();
+}
+
+INPUT_KEY_INDEX* Transmitter::GetComboKeysForTarget(N3DS_KEY_INDEX target)
+{
+    switch(target)
+    {
+        case N3DS_KEY_INDEX_HOME:  return mCfg.gamepadCfg.homeKeys;
+        case N3DS_KEY_INDEX_POWER: return mCfg.gamepadCfg.powerKeys;
+        case N3DS_KEY_INDEX_SHUTDOWN: return mCfg.gamepadCfg.shutKeys;
+        default: return nullptr;
+    }
+}
+
+void Transmitter::EnterSpecialCapture(N3DS_KEY_INDEX target)
+{
+    mSpecialTarget = target;
+    mSpecialKeyCount = 0;
+    INPUT_KEY_INDEX* keys = GetComboKeysForTarget(target);
+    if(keys) { keys[0] = INPUT_KEY_INDEX_INVALID; keys[1] = INPUT_KEY_INDEX_INVALID; }
+}
+
+void Transmitter::ExitSpecialCapture()
+{
+    mSpecialTarget = N3DS_KEY_INDEX_INVALID;
+    mSpecialKeyCount = 0;
+}
+
+int Transmitter::GetSpecialComboKey(N3DS_KEY_INDEX target, int index)
+{
+    if(index < 0 || index > 1) return -1;
+    INPUT_KEY_INDEX* keys = GetComboKeysForTarget(target);
+    if(!keys) return -1;
+    return static_cast<int>(keys[index]);
 }
 
 void Transmitter::ResolveKeyConflict(bool accept, int sessionId)

@@ -53,6 +53,9 @@ typedef struct GamepadCfg
     u32 turboIntervalMs;
     TURBO_MODE turboMode[MAX_N3DS_KEY_TURBO_INDEX];
     CONTROLLER_TYPE ctrlType;
+    INPUT_KEY_INDEX homeKeys[2];  // HOME combo
+    INPUT_KEY_INDEX powerKeys[2]; // POWER combo
+    INPUT_KEY_INDEX shutKeys[2];  // SHUTDOWN combo
 }GamepadCfg;
 
 typedef struct Config

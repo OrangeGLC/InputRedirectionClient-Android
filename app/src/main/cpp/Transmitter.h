@@ -68,6 +68,9 @@ public:
     void ResolveKeyConflict(bool accept, int sessionId);
     int GetCaptureSessionId();
     void ResetKeyMapping();
+    void EnterSpecialCapture(N3DS_KEY_INDEX target);
+    void ExitSpecialCapture();
+    int GetSpecialComboKey(N3DS_KEY_INDEX target, int index);
     void SetTurbo(N3DS_KEY_INDEX index, bool flg);
     bool GetTurbo(N3DS_KEY_INDEX index);
     void SetTurboInterval(u32 ms);
@@ -97,6 +100,9 @@ private:
     int mCaptureSessionId = 0;
     int mConflictSessionId = 0;
     std::mutex mCaptureMutex;
+    N3DS_KEY_INDEX mSpecialTarget = N3DS_KEY_INDEX_INVALID;
+    int mSpecialKeyCount = 0;
+    INPUT_KEY_INDEX* GetComboKeysForTarget(N3DS_KEY_INDEX target);
     bool IsCapturableKey(INPUT_KEY_INDEX idx);
     bool IsInputKeyRelevantForCtrlType(INPUT_KEY_INDEX idx, CONTROLLER_TYPE type);
     CONTROLLER_TYPE DetectCtrlTypeFromKey(INPUT_KEY_INDEX idx);
