@@ -6,11 +6,13 @@
 #include "AndroidOut.h"
 #include <unistd.h>
 #include <mutex>
+#include <condition_variable>
 
 #define LOG_TAG "IRC"
 
 
 std::mutex mutexCfgPathReady;
+std::condition_variable cvCfgPathReady;
 bool gCfgPathReady=false;
 std::string gCfgPath;
 struct android_app *gApp = nullptr;
@@ -21,9 +23,14 @@ Java_com_jingrong_inputredirectionclient_1android_MainActivity_initNative(JNIEnv
                                                                           jobject thiz,
                                                                           jstring path)
 {
-    std::lock_guard<std::mutex> lock(mutexCfgPathReady);
-    gCfgPath = env->GetStringUTFChars(path, nullptr);
-    gCfgPathReady = true;
+    const char* str = env->GetStringUTFChars(path, nullptr);
+    {
+        std::lock_guard<std::mutex> lock(mutexCfgPathReady);
+        gCfgPath = str;
+        gCfgPathReady = true;
+    }
+    env->ReleaseStringUTFChars(path, str);
+    cvCfgPathReady.notify_one();
 }
 
 extern "C"

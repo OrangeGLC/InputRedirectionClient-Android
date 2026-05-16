@@ -1,10 +1,12 @@
 #include <game-activity/GameActivity.cpp>
 #include <game-text-input/gametextinput.cpp>
+#include <condition_variable>
 #include "Transmitter.h"
 #include "JNIAdapt.h"
 
 extern struct android_app *gApp;
 extern std::mutex mutexCfgPathReady;
+extern std::condition_variable cvCfgPathReady;
 extern bool gCfgPathReady;
 
 
@@ -33,11 +35,9 @@ void android_main(struct android_app *pApp) {
 
     android_app_set_motion_event_filter(pApp, motion_event_filter_func);
     android_app_set_key_event_filter(pApp, key_event_filter_func);
-    while(true)
     {
-        std::lock_guard<std::mutex> lock(mutexCfgPathReady);
-        if(gCfgPathReady)
-            break;
+        std::unique_lock<std::mutex> lock(mutexCfgPathReady);
+        cvCfgPathReady.wait(lock, []{ return gCfgPathReady; });
     }
     Transmitter* tr = Transmitter::CreateInstance(pApp);
     if(tr)
