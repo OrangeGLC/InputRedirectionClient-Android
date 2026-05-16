@@ -130,7 +130,7 @@
                         <Switch android:id="@+id/switch_invertXY" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="X⇌Y" android:paddingStart="0dp" android:paddingEnd="0dp" android:minWidth="0dp" />
                     </LinearLayout>
 
-                    <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="end">
+                    <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:gravity="end">
                         <Switch android:id="@+id/switch_swap_sticks_simple" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/swap_sticks" android:paddingStart="0dp" android:paddingEnd="0dp" android:minWidth="0dp" />
                     </LinearLayout>
                 </LinearLayout>
