@@ -737,7 +737,7 @@ TEST(TransmitterJoyConCapture, JclUp_SetsCtrlTypeToJoycon)
     CHECK_EQUAL(CONTROLLER_TYPE_JOYCON, cfg->gamepadCfg.ctrlType);
     CHECK_EQUAL(1, gCaptureResultCallCount);
     CHECK(gLastCaptureConflict);
-    STRCMP_EQUAL("UP", gLastCaptureConflictN3dsName);
+    STRCMP_EQUAL("+↑", gLastCaptureConflictN3dsName);
 
     // Accept the conflict (swap: JCL_UP→A, old A→UP)
     tr->ResolveKeyConflict(true, 0);
@@ -853,7 +853,7 @@ TEST(TransmitterJoyConCapture, CaptureJclUp_MappingCorrect)
     // Conflict detected (JCL_UP already mapped to UP by AdaptToCtrlType)
     CHECK_EQUAL(1, gCaptureResultCallCount);
     CHECK(gLastCaptureConflict);
-    STRCMP_EQUAL("UP", gLastCaptureConflictN3dsName);
+    STRCMP_EQUAL("+↑", gLastCaptureConflictN3dsName);
 
     // Accept conflict → swap
     tr->ResolveKeyConflict(true, 0);
@@ -1288,7 +1288,7 @@ TEST(TransmitterJoyConCapture, CrossController_XboxSetupThenJoyconModify)
     // ctrlType switched to JOYCON, AdaptToCtrlType set JCL_UP→UP → conflict
     CHECK_EQUAL(CONTROLLER_TYPE_JOYCON, cfg->gamepadCfg.ctrlType);
     CHECK(gLastCaptureConflict);
-    STRCMP_EQUAL("UP", gLastCaptureConflictN3dsName);
+    STRCMP_EQUAL("+↑", gLastCaptureConflictN3dsName);
 
     // Accept conflict: JCL_UP → L, old L occupant gets UP
     tr->ResolveKeyConflict(true, 0);
@@ -1331,7 +1331,7 @@ TEST(TransmitterJoyConCapture, CrossController_NoConflictBetweenTypes)
     CHECK_EQUAL(CONTROLLER_TYPE_JOYCON, cfg->gamepadCfg.ctrlType);
     // Conflict detected: JCL_UP already mapped to UP by AdaptToCtrlType
     CHECK(gLastCaptureConflict);
-    STRCMP_EQUAL("UP", gLastCaptureConflictN3dsName);
+    STRCMP_EQUAL("+↑", gLastCaptureConflictN3dsName);
 
     // Accept conflict: JCL_UP→B, old B occupant gets UP
     tr->ResolveKeyConflict(true, 0);
@@ -1543,4 +1543,45 @@ TEST(TransmitterJoyConCapture, SequentialCapture_R3R_RBZR_RTR_Conflict)
     CHECK_EQUAL(N3DS_KEY_INDEX_R, tr->GetKeyMapping(INPUT_KEY_INDEX_RT));
     CHECK_EQUAL(N3DS_KEY_INDEX_INVALID, tr->GetKeyMapping(INPUT_KEY_INDEX_R3));
     CHECK_FALSE(gLastCaptureConflict);
+}
+
+// ---- Conflict dialog shows D-pad names as +↑ not UP ----
+
+TEST(TransmitterJoyConCapture, ConflictDialog_UsesArrowNamesForDpad)
+{
+    // JCL_UP mapped to N3DS UP via AdaptToCtrlType, capture A → conflict
+    Config* cfg = TransmitterTestAccess::GetConfig(tr);
+    cfg->gamepadCfg.ctrlType = CONTROLLER_TYPE_JOYCON;
+    tr->AdaptToCtrlType(CONTROLLER_TYPE_JOYCON);
+
+    tr->EnterKeyCapture(N3DS_KEY_INDEX_A);
+    GameActivityKeyEvent ev = {};
+    ev.keyCode = 0;
+    ev.scanCode = GAMEPAD_BUTTON_JCL_UP;
+    ev.action = AKEY_EVENT_ACTION_DOWN;
+    ev.source = AINPUT_SOURCE_GAMEPAD;
+    tr->HandleKeyEvent(&ev);
+
+    CHECK(gLastCaptureConflict);
+    // Bug: was "UP", should be "+↑"
+    STRCMP_EQUAL("+↑", gLastCaptureConflictN3dsName);
+}
+
+TEST(TransmitterJoyConCapture, ConflictDialog_UsesArrowNamesForXboxDpad)
+{
+    Config* cfg = TransmitterTestAccess::GetConfig(tr);
+    cfg->gamepadCfg.ctrlType = CONTROLLER_TYPE_XBOX;
+    tr->AdaptToCtrlType(CONTROLLER_TYPE_XBOX);
+
+    tr->EnterKeyCapture(N3DS_KEY_INDEX_A);
+    GameActivityKeyEvent ev = {};
+    ev.keyCode = GAMEPAD_BUTTON_DOWN;
+    ev.scanCode = 0;
+    ev.action = AKEY_EVENT_ACTION_DOWN;
+    ev.source = AINPUT_SOURCE_GAMEPAD;
+    tr->HandleKeyEvent(&ev);
+
+    CHECK(gLastCaptureConflict);
+    // Bug: was "DOWN", should be "+↓"
+    STRCMP_EQUAL("+↓", gLastCaptureConflictN3dsName);
 }

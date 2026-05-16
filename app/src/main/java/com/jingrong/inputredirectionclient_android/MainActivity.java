@@ -713,7 +713,7 @@ public class MainActivity extends GameActivity {
     private static final String[] N3DS_KEY_NAMES = {
         "A", "B", "X", "Y", "L", "R", "ZL", "ZR",
         "SELECT", "START", "HOME", "POWER",
-        "UP", "DOWN", "LEFT", "RIGHT", "SHUTDOWN"
+        "+↑", "+↓", "+←", "+→", "SHUTDOWN"
     };
     // N3DS key index constants (mirrors N3DS_KEY_INDEX in Gamepad.h)
     private static final int N3DS_KEY_INDEX_A = 0;
