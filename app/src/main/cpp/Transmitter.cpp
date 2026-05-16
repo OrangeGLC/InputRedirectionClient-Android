@@ -184,7 +184,7 @@ void Transmitter::SetDefaultKeyMapValue()
                 mCfg.gamepadCfg.targetKeyIndex[i] = N3DS_KEY_INDEX_POWER;
                 break;
             case INPUT_KEY_INDEX_SCRSHOT:
-                mCfg.gamepadCfg.targetKeyIndex[i] = N3DS_KEY_INDEX_INVALID;
+                mCfg.gamepadCfg.targetKeyIndex[i] = N3DS_KEY_INDEX_POWER;
                 break;
             case INPUT_KEY_INDEX_JCL_UP:
                 mCfg.gamepadCfg.targetKeyIndex[i] = N3DS_KEY_INDEX_INVALID;
@@ -376,7 +376,7 @@ Transmitter::RetVal Transmitter::SaveConfig()
     cJSON_AddBoolToObject(root, "invertAB", mCfg.gamepadCfg.invertAB);
     cJSON_AddBoolToObject(root, "invertXY", mCfg.gamepadCfg.invertXY);
     cJSON_AddNumberToObject(root, "ctrlType", static_cast<int>(mCfg.gamepadCfg.ctrlType));
-    cJSON_AddNumberToObject(root, "shutKey1", static_cast<int>(mCfg.gamepadCfg.shutKeys[0]));
+    cJSON_AddNumberToObject(root, "comboKey1", static_cast<int>(mCfg.gamepadCfg.shutKeys[0]));
     cJSON_AddNumberToObject(root, "comboKey2", static_cast<int>(mCfg.gamepadCfg.shutKeys[1]));
     cJSON_AddBoolToObject(root, "mapHome", mCfg.gamepadCfg.mapHome);
     cJSON_AddBoolToObject(root, "mapPower", mCfg.gamepadCfg.mapPower);
@@ -684,6 +684,154 @@ INPUT_KEY_INDEX Transmitter::FindPhysKeyForN3dsKey(N3DS_KEY_INDEX n3dsKey, CONTR
     return INPUT_KEY_INDEX_INVALID;
 }
 
+// ---- Key capture via HandleKeyEvent ------------------------------------------
+bool Transmitter::ProcessKeyCapture(GameActivityKeyEvent* keyEvent, INPUT_KEY_INDEX inIndex)
+{
+    if(mCaptureTargetN3dsKey == N3DS_KEY_INDEX_INVALID
+        || keyEvent->action != AKEY_EVENT_ACTION_DOWN
+        || keyEvent->repeatCount != 0)
+        return false;
+
+    std::lock_guard<std::mutex> lock(mCaptureMutex);
+
+    if(mCaptureTargetN3dsKey == N3DS_KEY_INDEX_INVALID) return false;
+    if(!IsCapturableKey(inIndex)) return false;
+
+    CONTROLLER_TYPE detected = DetectCtrlTypeFromKey(inIndex);
+    if(detected != mCfg.gamepadCfg.ctrlType)
+    {
+        mCfg.gamepadCfg.ctrlType = detected;
+        AdaptToCtrlType(detected);
+    }
+
+    CONTROLLER_TYPE ctrlType = mCfg.gamepadCfg.ctrlType;
+    N3DS_KEY_INDEX oldTarget = mCfg.gamepadCfg.targetKeyIndex[inIndex];
+
+    if(oldTarget == mCaptureTargetN3dsKey)
+    {
+        N3DS_KEY_INDEX target = mCaptureTargetN3dsKey;
+        mCaptureTargetN3dsKey = N3DS_KEY_INDEX_INVALID;
+        callOnCaptureResult(gN3DsKeyTab[target].name,
+                            gInputKeyTab[inIndex].name, false, nullptr);
+    }
+    else if(oldTarget == N3DS_KEY_INDEX_INVALID
+            || !IsInputKeyRelevantForCtrlType(inIndex, ctrlType))
+    {
+        N3DS_KEY_INDEX target = mCaptureTargetN3dsKey;
+        mCfg.gamepadCfg.targetKeyIndex[inIndex] = target;
+
+        INPUT_KEY_INDEX oldPhys = FindPhysKeyForN3dsKey(target, ctrlType, inIndex);
+        if(oldPhys != INPUT_KEY_INDEX_INVALID)
+            mCfg.gamepadCfg.targetKeyIndex[oldPhys] = N3DS_KEY_INDEX_INVALID;
+
+        mCaptureTargetN3dsKey = N3DS_KEY_INDEX_INVALID;
+        SaveConfig();
+        callOnCaptureResult(gN3DsKeyTab[target].name,
+                            gInputKeyTab[inIndex].name, false, nullptr);
+    }
+    else
+    {
+        mConflictInputIdx = inIndex;
+        mConflictOldN3dsIdx = oldTarget;
+        mConflictSessionId = mCaptureSessionId;
+        callOnCaptureResult(gN3DsKeyTab[mCaptureTargetN3dsKey].name,
+                            gInputKeyTab[inIndex].name, true,
+                            gN3DsKeyTab[oldTarget].name);
+    }
+    return true;
+}
+
+// ---- Motion capture via HandleMotionEvent ------------------------------------
+void Transmitter::ProcessMotionCapture(int& hx, int& hy, int& lt, int& rt)
+{
+    if(mCaptureTargetN3dsKey == N3DS_KEY_INDEX_INVALID) return;
+
+    std::lock_guard<std::mutex> lock(mCaptureMutex);
+
+    if(mCaptureTargetN3dsKey == N3DS_KEY_INDEX_INVALID) return;
+
+    INPUT_KEY_INDEX capIdx = INPUT_KEY_INDEX_INVALID;
+    bool isTrigger = false;
+
+    if(hx == 1 && mKeysState[INPUT_KEY_INDEX_RIGHT] != KEY_STATE_DOWN)
+        capIdx = INPUT_KEY_INDEX_RIGHT;
+    else if(hx == -1 && mKeysState[INPUT_KEY_INDEX_LEFT] != KEY_STATE_DOWN)
+        capIdx = INPUT_KEY_INDEX_LEFT;
+    else if(hy == 1 && mKeysState[INPUT_KEY_INDEX_DOWN] != KEY_STATE_DOWN)
+        capIdx = INPUT_KEY_INDEX_DOWN;
+    else if(hy == -1 && mKeysState[INPUT_KEY_INDEX_UP] != KEY_STATE_DOWN)
+        capIdx = INPUT_KEY_INDEX_UP;
+    else if(lt > 0 && mKeysState[INPUT_KEY_INDEX_LT] != KEY_STATE_DOWN)
+    {
+        capIdx = INPUT_KEY_INDEX_LT;
+        isTrigger = true;
+    }
+    else if(rt > 0 && mKeysState[INPUT_KEY_INDEX_RT] != KEY_STATE_DOWN)
+    {
+        capIdx = INPUT_KEY_INDEX_RT;
+        isTrigger = true;
+    }
+
+    if(capIdx == INPUT_KEY_INDEX_INVALID) return;
+
+    N3DS_KEY_INDEX oldTarget = mCfg.gamepadCfg.targetKeyIndex[capIdx];
+
+    bool adaptRan = false;
+    if(!isTrigger && mCfg.gamepadCfg.ctrlType != CONTROLLER_TYPE_XBOX)
+    {
+        adaptRan = true;
+        mCfg.gamepadCfg.ctrlType = CONTROLLER_TYPE_XBOX;
+        AdaptToCtrlType(CONTROLLER_TYPE_XBOX);
+    }
+
+    N3DS_KEY_INDEX displacedValue = oldTarget;
+    if(adaptRan && oldTarget == N3DS_KEY_INDEX_INVALID)
+        displacedValue = mCfg.gamepadCfg.targetKeyIndex[capIdx];
+
+    CONTROLLER_TYPE ctrlType = mCfg.gamepadCfg.ctrlType;
+
+    bool consumed = false;
+    if(oldTarget == mCaptureTargetN3dsKey)
+    {
+        N3DS_KEY_INDEX target = mCaptureTargetN3dsKey;
+        mCaptureTargetN3dsKey = N3DS_KEY_INDEX_INVALID;
+        callOnCaptureResult(gN3DsKeyTab[target].name,
+                            gInputKeyTab[capIdx].name, false, nullptr);
+        consumed = true;
+    }
+    else if(oldTarget == N3DS_KEY_INDEX_INVALID
+            || !IsInputKeyRelevantForCtrlType(capIdx, ctrlType))
+    {
+        N3DS_KEY_INDEX target = mCaptureTargetN3dsKey;
+        mCfg.gamepadCfg.targetKeyIndex[capIdx] = target;
+
+        INPUT_KEY_INDEX oldPhys = FindPhysKeyForN3dsKey(target, ctrlType, capIdx);
+        if(oldPhys != INPUT_KEY_INDEX_INVALID)
+            mCfg.gamepadCfg.targetKeyIndex[oldPhys] = displacedValue;
+
+        mCaptureTargetN3dsKey = N3DS_KEY_INDEX_INVALID;
+        SaveConfig();
+        callOnCaptureResult(gN3DsKeyTab[target].name,
+                            gInputKeyTab[capIdx].name, false, nullptr);
+        consumed = true;
+    }
+    else
+    {
+        mConflictInputIdx = capIdx;
+        mConflictOldN3dsIdx = oldTarget;
+        mConflictSessionId = mCaptureSessionId;
+        callOnCaptureResult(gN3DsKeyTab[mCaptureTargetN3dsKey].name,
+                            gInputKeyTab[capIdx].name, true,
+                            gN3DsKeyTab[oldTarget].name);
+    }
+    if(consumed)
+    {
+        if(!isTrigger) { hx = 0; hy = 0; }
+        else if(capIdx == INPUT_KEY_INDEX_LT) lt = 0;
+        else if(capIdx == INPUT_KEY_INDEX_RT) rt = 0;
+    }
+}
+
 void Transmitter::HandleKeyEvent(GameActivityKeyEvent* keyEvent)
 {
     if(keyEvent == nullptr)
@@ -704,67 +852,19 @@ void Transmitter::HandleKeyEvent(GameActivityKeyEvent* keyEvent)
             return;
         }
 
-        /* Key capture mode: intercept next key press for remapping */
-        if(mCaptureTargetN3dsKey != N3DS_KEY_INDEX_INVALID
-            && keyEvent->action == AKEY_EVENT_ACTION_DOWN
-            && keyEvent->repeatCount == 0)
+        if (ProcessKeyCapture(keyEvent, inIndex)) return;
+
+        /* Auto-detect controller type from first key press */
+        if (keyEvent->action == AKEY_EVENT_ACTION_DOWN && keyEvent->repeatCount == 0)
         {
-            std::lock_guard<std::mutex> lock(mCaptureMutex);
-
-            // Re-check after acquiring lock (may have been cancelled)
-            if(mCaptureTargetN3dsKey == N3DS_KEY_INDEX_INVALID) return;
-
-            // Whitelist: only capture specific keys
-            if(!IsCapturableKey(inIndex)) return;
-
-            // Auto-detect controller type from D-pad keys
             CONTROLLER_TYPE detected = DetectCtrlTypeFromKey(inIndex);
-            if(detected != mCfg.gamepadCfg.ctrlType)
+            if (detected != mCfg.gamepadCfg.ctrlType && detected != CONTROLLER_TYPE_UNKNOWN)
             {
                 mCfg.gamepadCfg.ctrlType = detected;
                 AdaptToCtrlType(detected);
-            }
-
-            // Read oldTarget AFTER AdaptToCtrlType so defaults count as real mappings
-            CONTROLLER_TYPE ctrlType = mCfg.gamepadCfg.ctrlType;
-            N3DS_KEY_INDEX oldTarget = mCfg.gamepadCfg.targetKeyIndex[inIndex];
-
-            if(oldTarget == mCaptureTargetN3dsKey)
-            {
-                // No conflict: physical key already maps to this N3DS key
-                N3DS_KEY_INDEX target = mCaptureTargetN3dsKey;
-                mCaptureTargetN3dsKey = N3DS_KEY_INDEX_INVALID;
-                callOnCaptureResult(gN3DsKeyTab[target].name,
-                                    gInputKeyTab[inIndex].name, false, nullptr);
-            }
-            else if(oldTarget == N3DS_KEY_INDEX_INVALID
-                    || !IsInputKeyRelevantForCtrlType(inIndex, ctrlType))
-            {
-                // Unmapped key (or key not relevant to current controller):
-                // assign directly, displace old occupant (ctrlType-filtered)
-                N3DS_KEY_INDEX target = mCaptureTargetN3dsKey;
-                mCfg.gamepadCfg.targetKeyIndex[inIndex] = target;
-
-                INPUT_KEY_INDEX oldPhys = FindPhysKeyForN3dsKey(target, ctrlType, inIndex);
-                if(oldPhys != INPUT_KEY_INDEX_INVALID)
-                    mCfg.gamepadCfg.targetKeyIndex[oldPhys] = N3DS_KEY_INDEX_INVALID;
-
-                mCaptureTargetN3dsKey = N3DS_KEY_INDEX_INVALID;
                 SaveConfig();
-                callOnCaptureResult(gN3DsKeyTab[target].name,
-                                    gInputKeyTab[inIndex].name, false, nullptr);
+                updateUI();
             }
-            else
-            {
-                // Conflict: relevant physical key already mapped to a different N3DS key
-                mConflictInputIdx = inIndex;
-                mConflictOldN3dsIdx = oldTarget;
-                mConflictSessionId = mCaptureSessionId;
-                callOnCaptureResult(gN3DsKeyTab[mCaptureTargetN3dsKey].name,
-                                    gInputKeyTab[inIndex].name, true,
-                                    gN3DsKeyTab[oldTarget].name);
-            }
-            return;
         }
 
         /* Full-auto mode: turbo keys toggle on press */
@@ -850,100 +950,8 @@ void Transmitter::HandleMotionEvent(GameActivityMotionEvent* motionEvent)
               mJoystick[JOYSTICK_R].x, mJoystick[JOYSTICK_R].y,
              hx, hy, lt, rt);
 
-        /* D-pad and analog trigger capture: intercept HAT/trigger rising edges */
-        if(mCaptureTargetN3dsKey != N3DS_KEY_INDEX_INVALID)
-        {
-            std::lock_guard<std::mutex> lock(mCaptureMutex);
+        ProcessMotionCapture(hx, hy, lt, rt);
 
-            if(mCaptureTargetN3dsKey != N3DS_KEY_INDEX_INVALID)
-            {
-                INPUT_KEY_INDEX capIdx = INPUT_KEY_INDEX_INVALID;
-                bool isTrigger = false;
-
-                // Check D-pad HAT first
-                if(hx == 1 && mKeysState[INPUT_KEY_INDEX_RIGHT] != KEY_STATE_DOWN)
-                    capIdx = INPUT_KEY_INDEX_RIGHT;
-                else if(hx == -1 && mKeysState[INPUT_KEY_INDEX_LEFT] != KEY_STATE_DOWN)
-                    capIdx = INPUT_KEY_INDEX_LEFT;
-                else if(hy == 1 && mKeysState[INPUT_KEY_INDEX_DOWN] != KEY_STATE_DOWN)
-                    capIdx = INPUT_KEY_INDEX_DOWN;
-                else if(hy == -1 && mKeysState[INPUT_KEY_INDEX_UP] != KEY_STATE_DOWN)
-                    capIdx = INPUT_KEY_INDEX_UP;
-                // Then check analog triggers (LT/RT)
-                else if(lt > 0 && mKeysState[INPUT_KEY_INDEX_LT] != KEY_STATE_DOWN)
-                {
-                    capIdx = INPUT_KEY_INDEX_LT;
-                    isTrigger = true;
-                }
-                else if(rt > 0 && mKeysState[INPUT_KEY_INDEX_RT] != KEY_STATE_DOWN)
-                {
-                    capIdx = INPUT_KEY_INDEX_RT;
-                    isTrigger = true;
-                }
-
-                if(capIdx != INPUT_KEY_INDEX_INVALID)
-                {
-                    // Save oldTarget BEFORE AdaptToCtrlType (which may modify mappings)
-                    N3DS_KEY_INDEX oldTarget = mCfg.gamepadCfg.targetKeyIndex[capIdx];
-
-                    // HAT D-pad → Xbox/Pro Controller (auto-switch from any non-XBOX type)
-                    bool adaptRan = false;
-                    if(!isTrigger && mCfg.gamepadCfg.ctrlType != CONTROLLER_TYPE_XBOX)
-                    {
-                        adaptRan = true;
-                        mCfg.gamepadCfg.ctrlType = CONTROLLER_TYPE_XBOX;
-                        AdaptToCtrlType(CONTROLLER_TYPE_XBOX);
-                    }
-
-                    N3DS_KEY_INDEX displacedValue = oldTarget;
-                    if(adaptRan && oldTarget == N3DS_KEY_INDEX_INVALID)
-                        displacedValue = mCfg.gamepadCfg.targetKeyIndex[capIdx];
-
-                    CONTROLLER_TYPE ctrlType = mCfg.gamepadCfg.ctrlType;
-
-                    bool consumed = false;
-                    if(oldTarget == mCaptureTargetN3dsKey)
-                    {
-                        N3DS_KEY_INDEX target = mCaptureTargetN3dsKey;
-                        mCaptureTargetN3dsKey = N3DS_KEY_INDEX_INVALID;
-                        callOnCaptureResult(gN3DsKeyTab[target].name,
-                                            gInputKeyTab[capIdx].name, false, nullptr);
-                        consumed = true;
-                    }
-                    else if(oldTarget == N3DS_KEY_INDEX_INVALID
-                            || !IsInputKeyRelevantForCtrlType(capIdx, ctrlType))
-                    {
-                        N3DS_KEY_INDEX target = mCaptureTargetN3dsKey;
-                        mCfg.gamepadCfg.targetKeyIndex[capIdx] = target;
-
-                        INPUT_KEY_INDEX oldPhys = FindPhysKeyForN3dsKey(target, ctrlType, capIdx);
-                        if(oldPhys != INPUT_KEY_INDEX_INVALID)
-                            mCfg.gamepadCfg.targetKeyIndex[oldPhys] = displacedValue;
-
-                        mCaptureTargetN3dsKey = N3DS_KEY_INDEX_INVALID;
-                        SaveConfig();
-                        callOnCaptureResult(gN3DsKeyTab[target].name,
-                                            gInputKeyTab[capIdx].name, false, nullptr);
-                        consumed = true;
-                    }
-                    else
-                    {
-                        mConflictInputIdx = capIdx;
-                        mConflictOldN3dsIdx = oldTarget;
-                        mConflictSessionId = mCaptureSessionId;
-                        callOnCaptureResult(gN3DsKeyTab[mCaptureTargetN3dsKey].name,
-                                            gInputKeyTab[capIdx].name, true,
-                                            gN3DsKeyTab[oldTarget].name);
-                    }
-                    if(consumed)
-                    {
-                        if(!isTrigger) { hx = 0; hy = 0; }
-                        else if(capIdx == INPUT_KEY_INDEX_LT) lt = 0;
-                        else if(capIdx == INPUT_KEY_INDEX_RT) rt = 0;
-                    }
-                }
-            }
-        }
         switch(hx)
         {
             case 1:

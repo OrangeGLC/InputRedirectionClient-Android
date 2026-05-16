@@ -5,58 +5,19 @@
 #include <cstdio>
 #include <unistd.h>
 
-static struct android_app gStubApp;
-
 TEST_GROUP(TransmitterFrame)
 {
-    Transmitter* tr;
-    char tempDir[256];
+    TransmitterTestHarness h;
 
-    void setup() override {
-        snprintf(tempDir, sizeof(tempDir), "/tmp/irc_utest_XXXXXX");
-        char* dir = mkdtemp(tempDir);
-        if (dir) gCfgPath = dir;
-
-        memset(&gStubApp, 0, sizeof(gStubApp));
-        gApp = &gStubApp;
-        TransmitterTestAccess::ResetInstance();
-        Transmitter::CreateInstance(&gStubApp);
-        tr = Transmitter::GetInstance();
-        tr->SetDefaultConfigValue();
-    }
-
-    void teardown() override {
-        tr->DestroyInstance();
-        TransmitterTestAccess::ResetInstance();
-        char cmd[512];
-        snprintf(cmd, sizeof(cmd), "rm -rf %s", tempDir);
-        system(cmd);
-    }
-
-    void pressKey(int keyCode, int scanCode) {
-        GameActivityKeyEvent ev = {};
-        ev.keyCode = keyCode;
-        ev.scanCode = scanCode;
-        ev.action = AKEY_EVENT_ACTION_DOWN;
-        ev.source = AINPUT_SOURCE_GAMEPAD;
-        tr->HandleKeyEvent(&ev);
-    }
-
-    void releaseKey(int keyCode, int scanCode) {
-        GameActivityKeyEvent ev = {};
-        ev.keyCode = keyCode;
-        ev.scanCode = scanCode;
-        ev.action = AKEY_EVENT_ACTION_UP;
-        ev.source = AINPUT_SOURCE_GAMEPAD;
-        tr->HandleKeyEvent(&ev);
-    }
+    void setup() override { h.setUp(); }
+    void teardown() override { h.tearDown(); }
 };
 
 // ---- GenerateFrame neutral ----
 TEST(TransmitterFrame, GenerateFrame_Neutral)
 {
-    tr->GenerateFrame();
-    FrameData* fd = TransmitterTestAccess::GetFrameData(tr);
+    h.tr->GenerateFrame();
+    FrameData* fd = TransmitterTestAccess::GetFrameData(h.tr);
     CHECK_EQUAL(HID_PAD_NEUTRAL, fd->hidPad);
     CHECK_EQUAL(CIRCLE_PAD_NEUTRAL, fd->circlePadState);
     CHECK_EQUAL(CPP_STATE_NEUTRAL, fd->cppState);
@@ -68,9 +29,9 @@ TEST(TransmitterFrame, GenerateFrame_Neutral)
 // ---- KeyEventToFrameData: A press ----
 TEST(TransmitterFrame, KeyEventToFrameData_APress)
 {
-    pressKey(GAMEPAD_BUTTON_A, 0);
-    tr->GenerateFrame();
-    FrameData* fd = TransmitterTestAccess::GetFrameData(tr);
+    h.pressKey(GAMEPAD_BUTTON_A, 0);
+    h.tr->GenerateFrame();
+    FrameData* fd = TransmitterTestAccess::GetFrameData(h.tr);
     // N3DS BUTTON A = offset 0, FIRST obj -> hidPad bit 0 cleared
     CHECK((fd->hidPad & (1 << N3DS_BUTTON_A)) == 0);
 }
@@ -78,28 +39,28 @@ TEST(TransmitterFrame, KeyEventToFrameData_APress)
 // ---- KeyEventToFrameData: B press ----
 TEST(TransmitterFrame, KeyEventToFrameData_BPress)
 {
-    pressKey(GAMEPAD_BUTTON_B, 0);
-    tr->GenerateFrame();
-    FrameData* fd = TransmitterTestAccess::GetFrameData(tr);
+    h.pressKey(GAMEPAD_BUTTON_B, 0);
+    h.tr->GenerateFrame();
+    FrameData* fd = TransmitterTestAccess::GetFrameData(h.tr);
     CHECK((fd->hidPad & (1 << N3DS_BUTTON_B)) == 0);
 }
 
 // ---- KeyEventToFrameData: key release ----
 TEST(TransmitterFrame, KeyEventToFrameData_Release)
 {
-    pressKey(GAMEPAD_BUTTON_A, 0);
-    releaseKey(GAMEPAD_BUTTON_A, 0);
-    tr->GenerateFrame();
-    FrameData* fd = TransmitterTestAccess::GetFrameData(tr);
+    h.pressKey(GAMEPAD_BUTTON_A, 0);
+    h.releaseKey(GAMEPAD_BUTTON_A, 0);
+    h.tr->GenerateFrame();
+    FrameData* fd = TransmitterTestAccess::GetFrameData(h.tr);
     CHECK_EQUAL(HID_PAD_NEUTRAL, fd->hidPad);
 }
 
 // ---- KeyEventToFrameData: ZL (FOURTH obj) ----
 TEST(TransmitterFrame, KeyEventToFrameData_ZLPress)
 {
-    pressKey(GAMEPAD_BUTTON_LT, 0);
-    tr->GenerateFrame();
-    FrameData* fd = TransmitterTestAccess::GetFrameData(tr);
+    h.pressKey(GAMEPAD_BUTTON_LT, 0);
+    h.tr->GenerateFrame();
+    FrameData* fd = TransmitterTestAccess::GetFrameData(h.tr);
     // ZL offset=2, FOURTH obj -> irButtonsState bit 2 set
     CHECK((fd->irButtonsState & (1 << N3DS_BUTTON_ZL)) != 0);
 }
@@ -107,31 +68,31 @@ TEST(TransmitterFrame, KeyEventToFrameData_ZLPress)
 // ---- KeyEventToFrameData: ZR (FOURTH obj) ----
 TEST(TransmitterFrame, KeyEventToFrameData_ZRPress)
 {
-    pressKey(GAMEPAD_BUTTON_RT, 0);
-    tr->GenerateFrame();
-    FrameData* fd = TransmitterTestAccess::GetFrameData(tr);
+    h.pressKey(GAMEPAD_BUTTON_RT, 0);
+    h.tr->GenerateFrame();
+    FrameData* fd = TransmitterTestAccess::GetFrameData(h.tr);
     CHECK((fd->irButtonsState & (1 << N3DS_BUTTON_ZR)) != 0);
 }
 
 // ---- KeyEventToFrameData: HOME (FIFTH obj, when mapped) ----
 TEST(TransmitterFrame, KeyEventToFrameData_HomePress)
 {
-    tr->SetHomeMap(true);
-    tr->SetKeyMapping(INPUT_KEY_INDEX_HOME, N3DS_KEY_INDEX_HOME);
-    pressKey(GAMEPAD_BUTTON_HOME, 0);
-    tr->GenerateFrame();
-    FrameData* fd = TransmitterTestAccess::GetFrameData(tr);
+    h.tr->SetHomeMap(true);
+    h.tr->SetKeyMapping(INPUT_KEY_INDEX_HOME, N3DS_KEY_INDEX_HOME);
+    h.pressKey(GAMEPAD_BUTTON_HOME, 0);
+    h.tr->GenerateFrame();
+    FrameData* fd = TransmitterTestAccess::GetFrameData(h.tr);
     CHECK((fd->interfaceButtons & (1 << N3DS_BUTTON_HOME)) != 0);
 }
 
 // ---- KeyEventToFrameData: HOME not mapped ----
 TEST(TransmitterFrame, KeyEventToFrameData_HomeNotMapped)
 {
-    tr->SetHomeMap(false);
-    tr->SetKeyMapping(INPUT_KEY_INDEX_HOME, N3DS_KEY_INDEX_HOME);
-    pressKey(GAMEPAD_BUTTON_HOME, 0);
-    tr->GenerateFrame();
-    FrameData* fd = TransmitterTestAccess::GetFrameData(tr);
+    h.tr->SetHomeMap(false);
+    h.tr->SetKeyMapping(INPUT_KEY_INDEX_HOME, N3DS_KEY_INDEX_HOME);
+    h.pressKey(GAMEPAD_BUTTON_HOME, 0);
+    h.tr->GenerateFrame();
+    FrameData* fd = TransmitterTestAccess::GetFrameData(h.tr);
     CHECK_EQUAL(0, fd->interfaceButtons);
 }
 
@@ -139,23 +100,23 @@ TEST(TransmitterFrame, KeyEventToFrameData_HomeNotMapped)
 TEST(TransmitterFrame, KeyEventToFrameData_UnmappedKey)
 {
     // L3 is unmapped by default (N3DS_KEY_INDEX_INVALID)
-    pressKey(GAMEPAD_BUTTON_L3, 0);
-    tr->GenerateFrame();
-    FrameData* fd = TransmitterTestAccess::GetFrameData(tr);
+    h.pressKey(GAMEPAD_BUTTON_L3, 0);
+    h.tr->GenerateFrame();
+    FrameData* fd = TransmitterTestAccess::GetFrameData(h.tr);
     CHECK_EQUAL(HID_PAD_NEUTRAL, fd->hidPad);
 }
 
 // ---- KeyEventToFrameData: L3+R3 combo = shutdown ----
 TEST(TransmitterFrame, KeyEventToFrameData_PowerOffChord)
 {
-    tr->SetPowerOffMap(true);
-    tr->SetKeyMapping(INPUT_KEY_INDEX_L3, N3DS_KEY_INDEX_SHUTDOWN);
-    tr->SetKeyMapping(INPUT_KEY_INDEX_R3, N3DS_KEY_INDEX_SHUTDOWN);
+    h.tr->SetPowerOffMap(true);
+    h.tr->SetKeyMapping(INPUT_KEY_INDEX_L3, N3DS_KEY_INDEX_SHUTDOWN);
+    h.tr->SetKeyMapping(INPUT_KEY_INDEX_R3, N3DS_KEY_INDEX_SHUTDOWN);
 
-    pressKey(GAMEPAD_BUTTON_L3, 0);
-    pressKey(GAMEPAD_BUTTON_R3, 0);
-    tr->GenerateFrame();
-    FrameData* fd = TransmitterTestAccess::GetFrameData(tr);
+    h.pressKey(GAMEPAD_BUTTON_L3, 0);
+    h.pressKey(GAMEPAD_BUTTON_R3, 0);
+    h.tr->GenerateFrame();
+    FrameData* fd = TransmitterTestAccess::GetFrameData(h.tr);
     // SHUTDOWN offset=2, FIFTH obj -> interfaceButtons bit 2 set
     CHECK((fd->interfaceButtons & (1 << N3DS_BUTTON_SHUTDOWN)) != 0);
 }
@@ -163,10 +124,10 @@ TEST(TransmitterFrame, KeyEventToFrameData_PowerOffChord)
 // ---- KeyEventToFrameData: Multiple keys ----
 TEST(TransmitterFrame, KeyEventToFrameData_MultipleKeys)
 {
-    pressKey(GAMEPAD_BUTTON_A, 0);
-    pressKey(GAMEPAD_BUTTON_X, 0);
-    tr->GenerateFrame();
-    FrameData* fd = TransmitterTestAccess::GetFrameData(tr);
+    h.pressKey(GAMEPAD_BUTTON_A, 0);
+    h.pressKey(GAMEPAD_BUTTON_X, 0);
+    h.tr->GenerateFrame();
+    FrameData* fd = TransmitterTestAccess::GetFrameData(h.tr);
     // Both A (bit 0) and X (bit 10) cleared in hidPad
     CHECK((fd->hidPad & (1 << N3DS_BUTTON_A)) == 0);
     CHECK((fd->hidPad & (1 << N3DS_BUTTON_X)) == 0);
@@ -179,9 +140,9 @@ TEST(TransmitterFrame, MotionEventToFrameData_LeftStick)
     ev.source = AINPUT_SOURCE_JOYSTICK;
     ev.pointers[0].values[AMOTION_EVENT_AXIS_X] = 0.5f;
     ev.pointers[0].values[AMOTION_EVENT_AXIS_Y] = -0.3f;
-    tr->HandleMotionEvent(&ev);
-    tr->GenerateFrame();
-    FrameData* fd = TransmitterTestAccess::GetFrameData(tr);
+    h.tr->HandleMotionEvent(&ev);
+    h.tr->GenerateFrame();
+    FrameData* fd = TransmitterTestAccess::GetFrameData(h.tr);
     // circlePadState should NOT be neutral when stick is moved
     CHECK(fd->circlePadState != CIRCLE_PAD_NEUTRAL);
 }
@@ -196,9 +157,9 @@ TEST(TransmitterFrame, MotionEventToFrameData_RightStick)
     ev.pointers[0].values[AMOTION_EVENT_AXIS_RZ] = 0.0f;
     ev.pointers[0].values[AMOTION_EVENT_AXIS_RX] = 1.0f;
     ev.pointers[0].values[AMOTION_EVENT_AXIS_RY] = 0.0f;
-    tr->HandleMotionEvent(&ev);
-    tr->GenerateFrame();
-    FrameData* fd = TransmitterTestAccess::GetFrameData(tr);
+    h.tr->HandleMotionEvent(&ev);
+    h.tr->GenerateFrame();
+    FrameData* fd = TransmitterTestAccess::GetFrameData(h.tr);
     // cppState should NOT be neutral when C-stick is moved
     CHECK(fd->cppState != CPP_STATE_NEUTRAL);
 }
@@ -213,9 +174,9 @@ TEST(TransmitterFrame, MotionEventToFrameData_DeadZone)
     ev.pointers[0].values[AMOTION_EVENT_AXIS_Y] = -0.02f;
     ev.pointers[0].values[AMOTION_EVENT_AXIS_Z] = 0.03f;
     ev.pointers[0].values[AMOTION_EVENT_AXIS_RZ] = -0.03f;
-    tr->HandleMotionEvent(&ev);
-    tr->GenerateFrame();
-    FrameData* fd = TransmitterTestAccess::GetFrameData(tr);
+    h.tr->HandleMotionEvent(&ev);
+    h.tr->GenerateFrame();
+    FrameData* fd = TransmitterTestAccess::GetFrameData(h.tr);
     // Both sticks should be neutral (dead zone applied)
     CHECK_EQUAL(CIRCLE_PAD_NEUTRAL, fd->circlePadState);
     CHECK_EQUAL(CPP_STATE_NEUTRAL, fd->cppState);
@@ -228,8 +189,8 @@ TEST(TransmitterFrame, MotionEventToFrameData_DPad_Right)
     ev.source = AINPUT_SOURCE_JOYSTICK;
     ev.pointers[0].values[AMOTION_EVENT_AXIS_HAT_X] = 1.0f;
     ev.pointers[0].values[AMOTION_EVENT_AXIS_HAT_Y] = 0.0f;
-    tr->HandleMotionEvent(&ev);
-    KEY_STATE* keys = TransmitterTestAccess::GetKeysState(tr);
+    h.tr->HandleMotionEvent(&ev);
+    KEY_STATE* keys = TransmitterTestAccess::GetKeysState(h.tr);
     CHECK_EQUAL(KEY_STATE_DOWN, keys[INPUT_KEY_INDEX_RIGHT]);
     CHECK_EQUAL(KEY_STATE_UP, keys[INPUT_KEY_INDEX_LEFT]);
 }
@@ -240,8 +201,8 @@ TEST(TransmitterFrame, MotionEventToFrameData_DPad_Up)
     ev.source = AINPUT_SOURCE_JOYSTICK;
     ev.pointers[0].values[AMOTION_EVENT_AXIS_HAT_X] = 0.0f;
     ev.pointers[0].values[AMOTION_EVENT_AXIS_HAT_Y] = -1.0f;
-    tr->HandleMotionEvent(&ev);
-    KEY_STATE* keys = TransmitterTestAccess::GetKeysState(tr);
+    h.tr->HandleMotionEvent(&ev);
+    KEY_STATE* keys = TransmitterTestAccess::GetKeysState(h.tr);
     CHECK_EQUAL(KEY_STATE_DOWN, keys[INPUT_KEY_INDEX_UP]);
 }
 
@@ -252,16 +213,16 @@ TEST(TransmitterFrame, MotionEventToFrameData_DPad_Centered)
     evOn.source = AINPUT_SOURCE_JOYSTICK;
     evOn.pointers[0].values[AMOTION_EVENT_AXIS_HAT_X] = 1.0f;
     evOn.pointers[0].values[AMOTION_EVENT_AXIS_HAT_Y] = 0.0f;
-    tr->HandleMotionEvent(&evOn);
+    h.tr->HandleMotionEvent(&evOn);
 
     // Then release
     GameActivityMotionEvent evOff = {};
     evOff.source = AINPUT_SOURCE_JOYSTICK;
     evOff.pointers[0].values[AMOTION_EVENT_AXIS_HAT_X] = 0.0f;
     evOff.pointers[0].values[AMOTION_EVENT_AXIS_HAT_Y] = 0.0f;
-    tr->HandleMotionEvent(&evOff);
+    h.tr->HandleMotionEvent(&evOff);
 
-    KEY_STATE* keys = TransmitterTestAccess::GetKeysState(tr);
+    KEY_STATE* keys = TransmitterTestAccess::GetKeysState(h.tr);
     CHECK_EQUAL(KEY_STATE_UP, keys[INPUT_KEY_INDEX_RIGHT]);
     CHECK_EQUAL(KEY_STATE_UP, keys[INPUT_KEY_INDEX_LEFT]);
 }
@@ -269,7 +230,7 @@ TEST(TransmitterFrame, MotionEventToFrameData_DPad_Centered)
 // ---- HandleKeyEvent: null event ----
 TEST(TransmitterFrame, HandleKeyEvent_NullEvent)
 {
-    tr->HandleKeyEvent(nullptr);
+    h.tr->HandleKeyEvent(nullptr);
     // Should not crash; no assertion needed
 }
 
@@ -280,15 +241,15 @@ TEST(TransmitterFrame, HandleKeyEvent_NonGamepadSource)
     ev.keyCode = GAMEPAD_BUTTON_A;
     ev.action = AKEY_EVENT_ACTION_DOWN;
     ev.source = 0; // Not a gamepad
-    tr->HandleKeyEvent(&ev);
-    KEY_STATE* keys = TransmitterTestAccess::GetKeysState(tr);
+    h.tr->HandleKeyEvent(&ev);
+    KEY_STATE* keys = TransmitterTestAccess::GetKeysState(h.tr);
     CHECK_EQUAL(KEY_STATE_UP, keys[INPUT_KEY_INDEX_A]);
 }
 
 // ---- HandleMotionEvent: null event ----
 TEST(TransmitterFrame, HandleMotionEvent_NullEvent)
 {
-    tr->HandleMotionEvent(nullptr);
+    h.tr->HandleMotionEvent(nullptr);
     // Should not crash
 }
 
@@ -298,47 +259,47 @@ TEST(TransmitterFrame, HandleMotionEvent_NonJoystickSource)
     GameActivityMotionEvent ev = {};
     ev.source = 0;
     ev.pointers[0].values[AMOTION_EVENT_AXIS_X] = 1.0f;
-    tr->HandleMotionEvent(&ev);
+    h.tr->HandleMotionEvent(&ev);
     // Joystick values should remain at neutral
-    AxisValue* joy = TransmitterTestAccess::GetJoystick(tr);
+    AxisValue* joy = TransmitterTestAccess::GetJoystick(h.tr);
     DOUBLES_EQUAL(0.0f, joy[JOYSTICK_L].x, 0.001f);
 }
 
 // ---- NeedTurbo ----
 TEST(TransmitterFrame, NeedTurbo_NoKeysPressed)
 {
-    CHECK_FALSE(tr->NeedTurbo());
+    CHECK_FALSE(h.tr->NeedTurbo());
 }
 
 TEST(TransmitterFrame, NeedTurbo_WithTurboKeyDown)
 {
-    tr->SetTurbo(N3DS_KEY_INDEX_A, true);
+    h.tr->SetTurbo(N3DS_KEY_INDEX_A, true);
     // Simulate A key pressed
-    TransmitterTestAccess::SetKeyState(tr, INPUT_KEY_INDEX_A, KEY_STATE_DOWN);
-    CHECK(tr->NeedTurbo());
+    TransmitterTestAccess::SetKeyState(h.tr, INPUT_KEY_INDEX_A, KEY_STATE_DOWN);
+    CHECK(h.tr->NeedTurbo());
 }
 
 TEST(TransmitterFrame, NeedTurbo_TurboDisabled_KeyDown)
 {
-    tr->SetTurbo(N3DS_KEY_INDEX_A, false);
-    TransmitterTestAccess::SetKeyState(tr, INPUT_KEY_INDEX_A, KEY_STATE_DOWN);
-    CHECK_FALSE(tr->NeedTurbo());
+    h.tr->SetTurbo(N3DS_KEY_INDEX_A, false);
+    TransmitterTestAccess::SetKeyState(h.tr, INPUT_KEY_INDEX_A, KEY_STATE_DOWN);
+    CHECK_FALSE(h.tr->NeedTurbo());
 }
 
 TEST(TransmitterFrame, NeedTurbo_NonTurboKeyDown)
 {
     // SELECT is not in turbo range (MAX_N3DS_KEY_TURBO_INDEX = 8)
-    TransmitterTestAccess::SetKeyState(tr, INPUT_KEY_INDEX_SELECT, KEY_STATE_DOWN);
-    CHECK_FALSE(tr->NeedTurbo());
+    TransmitterTestAccess::SetKeyState(h.tr, INPUT_KEY_INDEX_SELECT, KEY_STATE_DOWN);
+    CHECK_FALSE(h.tr->NeedTurbo());
 }
 
 // ---- GenerateFrame buffer content ----
 TEST(TransmitterFrame, GenerateFrame_BufferSize)
 {
-    tr->GenerateFrame();
-    char* buf = TransmitterTestAccess::GetFrameBuffer(tr);
+    h.tr->GenerateFrame();
+    char* buf = TransmitterTestAccess::GetFrameBuffer(h.tr);
     // First 4 bytes = hidPad (little-endian)
-    FrameData* fd = TransmitterTestAccess::GetFrameData(tr);
+    FrameData* fd = TransmitterTestAccess::GetFrameData(h.tr);
     u32 bufHidPad;
     memcpy(&bufHidPad, buf, 4);
     CHECK_EQUAL(fd->hidPad, bufHidPad);

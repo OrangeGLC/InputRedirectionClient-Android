@@ -4,6 +4,9 @@
 #include "JNIAdapt.h"
 #include <string>
 #include <chrono>
+#include <cstring>
+#include <cstdio>
+#include <unistd.h>
 
 extern std::string gCfgPath;
 extern struct android_app *gApp;
@@ -63,4 +66,53 @@ public:
 
     // Capture tracking globals reset (defined in main.cpp)
     static void ResetCaptureTracking();
+};
+
+// Shared test fixture — eliminates duplicated setup/teardown across test files
+struct TransmitterTestHarness {
+    Transmitter* tr = nullptr;
+    char tempDir[256] = {};
+    struct android_app stubApp;
+
+    void setUp(bool setDefaults = true) {
+        snprintf(tempDir, sizeof(tempDir), "/tmp/irc_utest_XXXXXX");
+        char* dir = mkdtemp(tempDir);
+        if (dir) gCfgPath = dir;
+
+        memset(&stubApp, 0, sizeof(stubApp));
+        gApp = &stubApp;
+        TransmitterTestAccess::ResetInstance();
+        Transmitter::CreateInstance(&stubApp);
+        tr = Transmitter::GetInstance();
+        if (setDefaults) tr->SetDefaultConfigValue();
+    }
+
+    void tearDown() {
+        if (tr) { tr->DestroyInstance(); }
+        TransmitterTestAccess::ResetInstance();
+        char cmd[512];
+        snprintf(cmd, sizeof(cmd), "rm -rf %s", tempDir);
+        system(cmd);
+    }
+
+    void pressKey(int keyCode, int scanCode = 0) {
+        GameActivityKeyEvent ev = {};
+        ev.keyCode = keyCode;
+        ev.scanCode = scanCode;
+        ev.action = AKEY_EVENT_ACTION_DOWN;
+        ev.source = AINPUT_SOURCE_GAMEPAD;
+        tr->HandleKeyEvent(&ev);
+    }
+
+    void releaseKey(int keyCode, int scanCode = 0) {
+        GameActivityKeyEvent ev = {};
+        ev.keyCode = keyCode;
+        ev.scanCode = scanCode;
+        ev.action = AKEY_EVENT_ACTION_UP;
+        ev.source = AINPUT_SOURCE_GAMEPAD;
+        tr->HandleKeyEvent(&ev);
+    }
+
+    void pressScanCode(int scanCode) { pressKey(0, scanCode); }
+    void pressKeyCode(int keyCode) { pressKey(keyCode, 0); }
 };

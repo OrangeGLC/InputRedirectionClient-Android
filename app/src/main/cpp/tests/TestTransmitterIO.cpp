@@ -7,37 +7,15 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-static struct android_app gStubApp;
-
 TEST_GROUP(TransmitterIO)
 {
-    Transmitter* tr;
-    char tempDir[256];
+    TransmitterTestHarness h;
 
-    void setup() override {
-        snprintf(tempDir, sizeof(tempDir), "/tmp/irc_utest_XXXXXX");
-        char* dir = mkdtemp(tempDir);
-        CHECK(dir != nullptr);
-
-        memset(&gStubApp, 0, sizeof(gStubApp));
-        gCfgPath = tempDir;
-        gApp = &gStubApp;
-        TransmitterTestAccess::ResetInstance();
-        Transmitter::CreateInstance(&gStubApp);
-        tr = Transmitter::GetInstance();
-    }
-
-    void teardown() override {
-        tr->DestroyInstance();
-        TransmitterTestAccess::ResetInstance();
-        // Clean up temp directory
-        char cmd[512];
-        snprintf(cmd, sizeof(cmd), "rm -rf %s", tempDir);
-        system(cmd);
-    }
+    void setup() override { h.setUp(false); }
+    void teardown() override { h.tearDown(); }
 
     std::string configPath() const {
-        return std::string(tempDir) + "/config.json";
+        return std::string(h.tempDir) + "/config.json";
     }
 
     void writeFile(const std::string& path, const std::string& content) {
@@ -51,8 +29,8 @@ TEST_GROUP(TransmitterIO)
 // ---- SaveConfig creates JSON file ----
 TEST(TransmitterIO, SaveConfig_CreatesJsonFile)
 {
-    tr->SetCfgIP("10.0.0.50");
-    CHECK_EQUAL(Transmitter::OK, tr->SaveConfig());
+    h.tr->SetCfgIP("10.0.0.50");
+    CHECK_EQUAL(Transmitter::OK, h.tr->SaveConfig());
 
     struct stat st;
     CHECK_EQUAL(0, stat(configPath().c_str(), &st));
@@ -62,22 +40,22 @@ TEST(TransmitterIO, SaveConfig_CreatesJsonFile)
 // ---- SaveConfig round-trip ----
 TEST(TransmitterIO, SaveConfig_RoundTrip)
 {
-    tr->SetCfgIP("172.16.0.1");
-    tr->SetInvertAB(true);
-    tr->SetTurboInterval(80);
-    CHECK_EQUAL(Transmitter::OK, tr->SaveConfig());
+    h.tr->SetCfgIP("172.16.0.1");
+    h.tr->SetInvertAB(true);
+    h.tr->SetTurboInterval(80);
+    CHECK_EQUAL(Transmitter::OK, h.tr->SaveConfig());
 
     // Destroy and recreate to force LoadConfig
-    tr->DestroyInstance();
+    h.tr->DestroyInstance();
     TransmitterTestAccess::ResetInstance();
-    Transmitter::CreateInstance(&gStubApp);
-    tr = Transmitter::GetInstance();
+    Transmitter::CreateInstance(&h.stubApp);
+    h.tr = Transmitter::GetInstance();
 
     char buf[64] = {};
-    tr->GetCfgIP(buf, sizeof(buf));
+    h.tr->GetCfgIP(buf, sizeof(buf));
     STRCMP_EQUAL("172.16.0.1", buf);
-    CHECK(tr->GetInvertAB());
-    CHECK_EQUAL(80, tr->GetTurboInterval());
+    CHECK(h.tr->GetInvertAB());
+    CHECK_EQUAL(80, h.tr->GetTurboInterval());
 }
 
 // ---- LoadConfig: missing file uses defaults ----
@@ -85,7 +63,7 @@ TEST(TransmitterIO, LoadConfig_MissingFile_UsesDefaults)
 {
     // No config file exists (fresh temp dir). Constructor already called LoadConfig.
     char buf[64] = {};
-    tr->GetCfgIP(buf, sizeof(buf));
+    h.tr->GetCfgIP(buf, sizeof(buf));
     STRCMP_EQUAL("192.168.100.100", buf); // default IP
 }
 
@@ -94,28 +72,28 @@ TEST(TransmitterIO, LoadConfig_InvalidJson_FallsBack)
 {
     writeFile(configPath(), "not valid json {{{");
 
-    tr->DestroyInstance();
+    h.tr->DestroyInstance();
     TransmitterTestAccess::ResetInstance();
-    Transmitter::CreateInstance(&gStubApp);
-    tr = Transmitter::GetInstance();
+    Transmitter::CreateInstance(&h.stubApp);
+    h.tr = Transmitter::GetInstance();
 
     char buf[64] = {};
-    tr->GetCfgIP(buf, sizeof(buf));
+    h.tr->GetCfgIP(buf, sizeof(buf));
     STRCMP_EQUAL("192.168.100.100", buf); // defaults used
 }
 
 // ---- SaveConfig: verify JSON content structure ----
 TEST(TransmitterIO, SaveConfig_JsonContent)
 {
-    tr->SetCfgIP("192.168.1.1");
-    tr->SetInvertAB(true);
-    tr->SetInvertXY(false);
-    tr->SetSwapJoysticks(true);
-    tr->SetHomeMap(true);
-    tr->SetPowerMap(false);
-    tr->SetPowerOffMap(true);
-    tr->SetTurboInterval(50);
-    CHECK_EQUAL(Transmitter::OK, tr->SaveConfig());
+    h.tr->SetCfgIP("192.168.1.1");
+    h.tr->SetInvertAB(true);
+    h.tr->SetInvertXY(false);
+    h.tr->SetSwapJoysticks(true);
+    h.tr->SetHomeMap(true);
+    h.tr->SetPowerMap(false);
+    h.tr->SetPowerOffMap(true);
+    h.tr->SetTurboInterval(50);
+    CHECK_EQUAL(Transmitter::OK, h.tr->SaveConfig());
 
     // Read back and parse
     FILE* f = fopen(configPath().c_str(), "r");
