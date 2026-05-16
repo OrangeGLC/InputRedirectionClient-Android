@@ -732,15 +732,18 @@ TEST(TransmitterJoyConCapture, JclUp_SetsCtrlTypeToJoycon)
     tr->EnterKeyCapture(N3DS_KEY_INDEX_A);
     pressScanCode(GAMEPAD_BUTTON_JCL_UP);
 
-    // ctrlType auto-switched to JOYCON
+    // ctrlType auto-switched to JOYCON, AdaptToCtrlType set JCL_UP→UP
+    // oldTarget=UP (read AFTER AdaptToCtrlType) → conflict with capture target A
     CHECK_EQUAL(CONTROLLER_TYPE_JOYCON, cfg->gamepadCfg.ctrlType);
-    // Capture succeeded: JCL_UP → A
+    CHECK_EQUAL(1, gCaptureResultCallCount);
+    CHECK(gLastCaptureConflict);
+    STRCMP_EQUAL("UP", gLastCaptureConflictN3dsName);
+
+    // Accept the conflict (swap: JCL_UP→A, old A→UP)
+    tr->ResolveKeyConflict(true, 0);
     CHECK_EQUAL(N3DS_KEY_INDEX_A, tr->GetKeyMapping(INPUT_KEY_INDEX_JCL_UP));
-    // Other JCL keys got AdaptToCtrlType defaults (JCL_DOWN → DOWN)
-    CHECK_EQUAL(N3DS_KEY_INDEX_DOWN, tr->GetKeyMapping(INPUT_KEY_INDEX_JCL_DOWN));
-    // Old A occupant gets the AdaptToCtrlType default that JCL_UP had (UP)
-    // i.e., A → UP (swap: JCL_UP takes A, A takes UP)
     CHECK_EQUAL(N3DS_KEY_INDEX_UP, tr->GetKeyMapping(INPUT_KEY_INDEX_A));
+    CHECK_EQUAL(N3DS_KEY_INDEX_DOWN, tr->GetKeyMapping(INPUT_KEY_INDEX_JCL_DOWN));
 }
 
 TEST(TransmitterJoyConCapture, JclAllFour_SetCtrlTypeOnce)
@@ -843,15 +846,19 @@ TEST(TransmitterJoyConCapture, XboxDpadKeys_NotRelevantForJoycon)
 // ---- Capture correctness for each Joy-Con key type ----
 TEST(TransmitterJoyConCapture, CaptureJclUp_MappingCorrect)
 {
+    // First JCL capture: AdaptToCtrlType sets JCL_UP→UP → conflict
     tr->EnterKeyCapture(N3DS_KEY_INDEX_A);
     pressScanCode(GAMEPAD_BUTTON_JCL_UP);
 
-    CHECK_EQUAL(N3DS_KEY_INDEX_A, tr->GetKeyMapping(INPUT_KEY_INDEX_JCL_UP));
-    // Old A gets the AdaptToCtrlType default (UP) — swap behavior
-    CHECK_EQUAL(N3DS_KEY_INDEX_UP, tr->GetKeyMapping(INPUT_KEY_INDEX_A));
+    // Conflict detected (JCL_UP already mapped to UP by AdaptToCtrlType)
     CHECK_EQUAL(1, gCaptureResultCallCount);
-    CHECK_FALSE(gLastCaptureConflict);
-    STRCMP_EQUAL("A", gLastCaptureN3dsName);
+    CHECK(gLastCaptureConflict);
+    STRCMP_EQUAL("UP", gLastCaptureConflictN3dsName);
+
+    // Accept conflict → swap
+    tr->ResolveKeyConflict(true, 0);
+    CHECK_EQUAL(N3DS_KEY_INDEX_A, tr->GetKeyMapping(INPUT_KEY_INDEX_JCL_UP));
+    CHECK_EQUAL(N3DS_KEY_INDEX_UP, tr->GetKeyMapping(INPUT_KEY_INDEX_A));
 }
 
 TEST(TransmitterJoyConCapture, CaptureL_MappingCorrect)
@@ -897,9 +904,11 @@ TEST(TransmitterJoyConCapture, FullJoyconRemap_AllPreserved)
 {
     Config* cfg = TransmitterTestAccess::GetConfig(tr);
 
-    // Step 1: JCL_UP → A (auto-switches ctrlType to JOYCON)
+    // Step 1: JCL_UP → A (auto-switches ctrlType to JOYCON, triggers conflict)
     tr->EnterKeyCapture(N3DS_KEY_INDEX_A);
     pressScanCode(GAMEPAD_BUTTON_JCL_UP);
+    CHECK(gLastCaptureConflict);
+    tr->ResolveKeyConflict(true, 0);
     CHECK_EQUAL(N3DS_KEY_INDEX_A, tr->GetKeyMapping(INPUT_KEY_INDEX_JCL_UP));
     CHECK_EQUAL(CONTROLLER_TYPE_JOYCON, cfg->gamepadCfg.ctrlType);
     TransmitterTestAccess::ResetCaptureTracking();
@@ -1008,12 +1017,13 @@ TEST(TransmitterJoyConCapture, DpadCapture_HatRightDetected)
     CHECK_FALSE(gLastCaptureConflict);
 }
 
-TEST(TransmitterJoyConCapture, DpadCapture_DoesNotSwitchFromJoycon)
+TEST(TransmitterJoyConCapture, DpadCapture_SwitchesFromJoyconToXbox)
 {
     Config* cfg = TransmitterTestAccess::GetConfig(tr);
     cfg->gamepadCfg.ctrlType = CONTROLLER_TYPE_JOYCON;
-    // Setup JCL mappings
-    tr->SetKeyMapping(INPUT_KEY_INDEX_JCL_UP, N3DS_KEY_INDEX_A);
+    tr->AdaptToCtrlType(CONTROLLER_TYPE_JOYCON);
+    cfg->gamepadCfg.targetKeyIndex[INPUT_KEY_INDEX_JCL_UP] = N3DS_KEY_INDEX_A;
+    cfg->gamepadCfg.targetKeyIndex[INPUT_KEY_INDEX_A] = N3DS_KEY_INDEX_INVALID;
 
     tr->EnterKeyCapture(N3DS_KEY_INDEX_B);
 
@@ -1023,12 +1033,15 @@ TEST(TransmitterJoyConCapture, DpadCapture_DoesNotSwitchFromJoycon)
     ev.pointers[0].values[AMOTION_EVENT_AXIS_HAT_Y] = 0.0f;
     tr->HandleMotionEvent(&ev);
 
+    // HAT D-pad detected → auto-switches ctrlType JOYCON→XBOX
+    CHECK_EQUAL(CONTROLLER_TYPE_XBOX, cfg->gamepadCfg.ctrlType);
     // HAT captured RIGHT → B
     CHECK_EQUAL(N3DS_KEY_INDEX_B, tr->GetKeyMapping(INPUT_KEY_INDEX_RIGHT));
-    // ctrlType stays JOYCON (HAT no longer switches from JOYCON→XBOX)
-    CHECK_EQUAL(CONTROLLER_TYPE_JOYCON, cfg->gamepadCfg.ctrlType);
-    // JCL mapping preserved
-    CHECK_EQUAL(N3DS_KEY_INDEX_A, tr->GetKeyMapping(INPUT_KEY_INDEX_JCL_UP));
+    // JCL keys cleared by AdaptToCtrlType(XBOX)
+    CHECK_EQUAL(N3DS_KEY_INDEX_INVALID, tr->GetKeyMapping(INPUT_KEY_INDEX_JCL_UP));
+    // Xbox D-pad defaults restored (except RIGHT which was captured)
+    CHECK_EQUAL(N3DS_KEY_INDEX_UP, tr->GetKeyMapping(INPUT_KEY_INDEX_UP));
+    CHECK_EQUAL(N3DS_KEY_INDEX_DOWN, tr->GetKeyMapping(INPUT_KEY_INDEX_DOWN));
 }
 
 // ---- Edge: non-gamepad source ignored during capture ----
@@ -1210,4 +1223,324 @@ TEST(TransmitterJoyConCapture, ModeSwitch_PreservesCtrlType)
     CHECK_EQUAL(CONTROLLER_TYPE_JOYCON, cfg->gamepadCfg.ctrlType);
     CHECK_EQUAL(N3DS_KEY_INDEX_A, tr->GetKeyMapping(INPUT_KEY_INDEX_JCL_UP));
     CHECK_EQUAL(N3DS_KEY_INDEX_B, tr->GetKeyMapping(INPUT_KEY_INDEX_LB));
+}
+
+// ---- Cross-controller mapping: Xbox setup → Joy-Con modify ----
+
+TEST(TransmitterJoyConCapture, CrossController_XboxSetupThenJoyconModify)
+{
+    Config* cfg = TransmitterTestAccess::GetConfig(tr);
+
+    // === Phase 1: Set up with Xbox controller (HAT D-pad captures) ===
+    tr->SetKeyMapMode(KEYMAP_MODE_CUSTOM);
+    cfg->gamepadCfg.ctrlType = CONTROLLER_TYPE_XBOX;
+
+    // Simulate: capture Xbox D-pad UP for N3DS A
+    // Clear existing defaults to avoid duplicates
+    cfg->gamepadCfg.targetKeyIndex[INPUT_KEY_INDEX_UP] = N3DS_KEY_INDEX_A;
+    cfg->gamepadCfg.targetKeyIndex[INPUT_KEY_INDEX_A] = N3DS_KEY_INDEX_INVALID;
+
+    // Simulate: capture Xbox D-pad DOWN for N3DS B
+    cfg->gamepadCfg.targetKeyIndex[INPUT_KEY_INDEX_DOWN] = N3DS_KEY_INDEX_B;
+    cfg->gamepadCfg.targetKeyIndex[INPUT_KEY_INDEX_B] = N3DS_KEY_INDEX_INVALID;
+
+    // Simulate: capture LB for N3DS X
+    cfg->gamepadCfg.targetKeyIndex[INPUT_KEY_INDEX_LB] = N3DS_KEY_INDEX_X;
+    cfg->gamepadCfg.targetKeyIndex[INPUT_KEY_INDEX_X] = N3DS_KEY_INDEX_INVALID;
+
+    // Simulate: capture LT for N3DS Y
+    cfg->gamepadCfg.targetKeyIndex[INPUT_KEY_INDEX_LT] = N3DS_KEY_INDEX_Y;
+    cfg->gamepadCfg.targetKeyIndex[INPUT_KEY_INDEX_Y] = N3DS_KEY_INDEX_INVALID;
+
+    // Persist via mode switch
+    tr->SetKeyMapMode(KEYMAP_MODE_SIMPLE);
+    tr->SetKeyMapMode(KEYMAP_MODE_CUSTOM);
+
+    // Verify Xbox mappings restored after round trip
+    CHECK_EQUAL(N3DS_KEY_INDEX_A, tr->GetKeyMapping(INPUT_KEY_INDEX_UP));
+    CHECK_EQUAL(N3DS_KEY_INDEX_B, tr->GetKeyMapping(INPUT_KEY_INDEX_DOWN));
+    CHECK_EQUAL(N3DS_KEY_INDEX_X, tr->GetKeyMapping(INPUT_KEY_INDEX_LB));
+    CHECK_EQUAL(N3DS_KEY_INDEX_Y, tr->GetKeyMapping(INPUT_KEY_INDEX_LT));
+    CHECK_EQUAL(CONTROLLER_TYPE_XBOX, cfg->gamepadCfg.ctrlType);
+
+    // Verify D-pad display names use +arrow format (via gInputKeyTab)
+    STRCMP_EQUAL("+↑", gInputKeyTab[INPUT_KEY_INDEX_UP].name);
+    STRCMP_EQUAL("+↓", gInputKeyTab[INPUT_KEY_INDEX_DOWN].name);
+    STRCMP_EQUAL("+←", gInputKeyTab[INPUT_KEY_INDEX_LEFT].name);
+    STRCMP_EQUAL("+→", gInputKeyTab[INPUT_KEY_INDEX_RIGHT].name);
+    STRCMP_EQUAL("+↑", gInputKeyTab[INPUT_KEY_INDEX_JCL_UP].name);
+    STRCMP_EQUAL("+↓", gInputKeyTab[INPUT_KEY_INDEX_JCL_DOWN].name);
+    STRCMP_EQUAL("+←", gInputKeyTab[INPUT_KEY_INDEX_JCL_LEFT].name);
+    STRCMP_EQUAL("+→", gInputKeyTab[INPUT_KEY_INDEX_JCL_RIGHT].name);
+
+    // === Phase 2: Modify with Joy-Con controller ===
+    TransmitterTestAccess::ResetCaptureTracking();
+
+    // Capture JCL_UP for N3DS L (auto-switches ctrlType to JOYCON, triggers conflict)
+    tr->EnterKeyCapture(N3DS_KEY_INDEX_L);
+    GameActivityKeyEvent ev = {};
+    ev.keyCode = 0;
+    ev.scanCode = GAMEPAD_BUTTON_JCL_UP;
+    ev.action = AKEY_EVENT_ACTION_DOWN;
+    ev.source = AINPUT_SOURCE_GAMEPAD;
+    tr->HandleKeyEvent(&ev);
+
+    // ctrlType switched to JOYCON, AdaptToCtrlType set JCL_UP→UP → conflict
+    CHECK_EQUAL(CONTROLLER_TYPE_JOYCON, cfg->gamepadCfg.ctrlType);
+    CHECK(gLastCaptureConflict);
+    STRCMP_EQUAL("UP", gLastCaptureConflictN3dsName);
+
+    // Accept conflict: JCL_UP → L, old L occupant gets UP
+    tr->ResolveKeyConflict(true, 0);
+    CHECK_EQUAL(N3DS_KEY_INDEX_L, tr->GetKeyMapping(INPUT_KEY_INDEX_JCL_UP));
+
+    // Verify non-D-pad Xbox mappings preserved after Joy-Con AdaptToCtrlType
+    CHECK_EQUAL(N3DS_KEY_INDEX_X, tr->GetKeyMapping(INPUT_KEY_INDEX_LB));
+    CHECK_EQUAL(N3DS_KEY_INDEX_Y, tr->GetKeyMapping(INPUT_KEY_INDEX_LT));
+
+    // Verify Xbox D-pad keys were cleared by AdaptToCtrlType(JOYCON)
+    CHECK_EQUAL(N3DS_KEY_INDEX_INVALID, tr->GetKeyMapping(INPUT_KEY_INDEX_UP));
+    CHECK_EQUAL(N3DS_KEY_INDEX_INVALID, tr->GetKeyMapping(INPUT_KEY_INDEX_DOWN));
+
+    // JCL D-pad defaults set by AdaptToCtrlType (except JCL_UP which was captured)
+    CHECK_EQUAL(N3DS_KEY_INDEX_DOWN, tr->GetKeyMapping(INPUT_KEY_INDEX_JCL_DOWN));
+    CHECK_EQUAL(N3DS_KEY_INDEX_LEFT, tr->GetKeyMapping(INPUT_KEY_INDEX_JCL_LEFT));
+    CHECK_EQUAL(N3DS_KEY_INDEX_RIGHT, tr->GetKeyMapping(INPUT_KEY_INDEX_JCL_RIGHT));
+}
+
+TEST(TransmitterJoyConCapture, CrossController_NoConflictBetweenTypes)
+{
+    Config* cfg = TransmitterTestAccess::GetConfig(tr);
+    tr->SetKeyMapMode(KEYMAP_MODE_CUSTOM);
+    cfg->gamepadCfg.ctrlType = CONTROLLER_TYPE_XBOX;
+
+    // Xbox D-pad UP → A
+    cfg->gamepadCfg.targetKeyIndex[INPUT_KEY_INDEX_UP] = N3DS_KEY_INDEX_A;
+    cfg->gamepadCfg.targetKeyIndex[INPUT_KEY_INDEX_A] = N3DS_KEY_INDEX_INVALID;
+
+    // Switch to JOYCON via JCL capture (triggers conflict: AdaptToCtrlType sets JCL_UP→UP)
+    TransmitterTestAccess::ResetCaptureTracking();
+    tr->EnterKeyCapture(N3DS_KEY_INDEX_B);
+    GameActivityKeyEvent ev = {};
+    ev.keyCode = 0;
+    ev.scanCode = GAMEPAD_BUTTON_JCL_UP;
+    ev.action = AKEY_EVENT_ACTION_DOWN;
+    ev.source = AINPUT_SOURCE_GAMEPAD;
+    tr->HandleKeyEvent(&ev);
+
+    CHECK_EQUAL(CONTROLLER_TYPE_JOYCON, cfg->gamepadCfg.ctrlType);
+    // Conflict detected: JCL_UP already mapped to UP by AdaptToCtrlType
+    CHECK(gLastCaptureConflict);
+    STRCMP_EQUAL("UP", gLastCaptureConflictN3dsName);
+
+    // Accept conflict: JCL_UP→B, old B occupant gets UP
+    tr->ResolveKeyConflict(true, 0);
+    CHECK_EQUAL(N3DS_KEY_INDEX_B, tr->GetKeyMapping(INPUT_KEY_INDEX_JCL_UP));
+    CHECK_EQUAL(N3DS_KEY_INDEX_UP, tr->GetKeyMapping(INPUT_KEY_INDEX_B));
+}
+
+// ---- LoadConfig / SetKeyMapMode applies D-pad defaults per ctrlType ----
+
+TEST(TransmitterJoyConCapture, LoadConfig_AppliesJoyconDpadDefaults)
+{
+    // Simulate: capture JCL_UP→A in JOYCON mode (ctrlType detected, AdaptToCtrlType ran)
+    Config* cfg = TransmitterTestAccess::GetConfig(tr);
+    tr->SetKeyMapMode(KEYMAP_MODE_CUSTOM);
+    cfg->gamepadCfg.ctrlType = CONTROLLER_TYPE_JOYCON;
+    tr->AdaptToCtrlType(CONTROLLER_TYPE_JOYCON);  // sets JCL defaults, clears Xbox D-pad
+    cfg->gamepadCfg.targetKeyIndex[INPUT_KEY_INDEX_JCL_UP] = N3DS_KEY_INDEX_A;
+    cfg->gamepadCfg.targetKeyIndex[INPUT_KEY_INDEX_A] = N3DS_KEY_INDEX_INVALID;
+
+    // Persist
+    tr->SaveConfig();
+
+    // Reload via SetKeyMapMode round trip
+    tr->SetKeyMapMode(KEYMAP_MODE_SIMPLE);
+    tr->SetKeyMapMode(KEYMAP_MODE_CUSTOM);
+
+    // Custom JCL_UP→A preserved
+    CHECK_EQUAL(N3DS_KEY_INDEX_A, tr->GetKeyMapping(INPUT_KEY_INDEX_JCL_UP));
+    // Other JCL D-pad defaults applied by AdaptToCtrlType → UI shows +↓ +← +→
+    CHECK_EQUAL(N3DS_KEY_INDEX_DOWN, tr->GetKeyMapping(INPUT_KEY_INDEX_JCL_DOWN));
+    CHECK_EQUAL(N3DS_KEY_INDEX_LEFT, tr->GetKeyMapping(INPUT_KEY_INDEX_JCL_LEFT));
+    CHECK_EQUAL(N3DS_KEY_INDEX_RIGHT, tr->GetKeyMapping(INPUT_KEY_INDEX_JCL_RIGHT));
+    // Xbox D-pad keys cleared by AdaptToCtrlType(JoyCon)
+    CHECK_EQUAL(N3DS_KEY_INDEX_INVALID, tr->GetKeyMapping(INPUT_KEY_INDEX_UP));
+    CHECK_EQUAL(N3DS_KEY_INDEX_INVALID, tr->GetKeyMapping(INPUT_KEY_INDEX_DOWN));
+    // D-pad display names are +arrow format (not N3DS key names)
+    STRCMP_EQUAL("+↑", gInputKeyTab[INPUT_KEY_INDEX_JCL_UP].name);
+    STRCMP_EQUAL("+↓", gInputKeyTab[INPUT_KEY_INDEX_JCL_DOWN].name);
+}
+
+TEST(TransmitterJoyConCapture, LoadConfig_AppliesXboxDpadDefaults)
+{
+    // Simulate: capture keyCode UP→A in XBOX mode
+    Config* cfg = TransmitterTestAccess::GetConfig(tr);
+    tr->SetKeyMapMode(KEYMAP_MODE_CUSTOM);
+    cfg->gamepadCfg.ctrlType = CONTROLLER_TYPE_XBOX;
+    tr->AdaptToCtrlType(CONTROLLER_TYPE_XBOX);  // sets Xbox defaults, clears JCL
+    cfg->gamepadCfg.targetKeyIndex[INPUT_KEY_INDEX_UP] = N3DS_KEY_INDEX_A;
+    cfg->gamepadCfg.targetKeyIndex[INPUT_KEY_INDEX_A] = N3DS_KEY_INDEX_INVALID;
+
+    tr->SaveConfig();
+    tr->SetKeyMapMode(KEYMAP_MODE_SIMPLE);
+    tr->SetKeyMapMode(KEYMAP_MODE_CUSTOM);
+
+    // Custom UP→A preserved
+    CHECK_EQUAL(N3DS_KEY_INDEX_A, tr->GetKeyMapping(INPUT_KEY_INDEX_UP));
+    // Other Xbox D-pad defaults applied by AdaptToCtrlType
+    CHECK_EQUAL(N3DS_KEY_INDEX_DOWN, tr->GetKeyMapping(INPUT_KEY_INDEX_DOWN));
+    CHECK_EQUAL(N3DS_KEY_INDEX_LEFT, tr->GetKeyMapping(INPUT_KEY_INDEX_LEFT));
+    CHECK_EQUAL(N3DS_KEY_INDEX_RIGHT, tr->GetKeyMapping(INPUT_KEY_INDEX_RIGHT));
+    // JCL keys cleared by AdaptToCtrlType(XBOX)
+    CHECK_EQUAL(N3DS_KEY_INDEX_INVALID, tr->GetKeyMapping(INPUT_KEY_INDEX_JCL_UP));
+    // Xbox D-pad display names
+    STRCMP_EQUAL("+↑", gInputKeyTab[INPUT_KEY_INDEX_UP].name);
+    STRCMP_EQUAL("+↓", gInputKeyTab[INPUT_KEY_INDEX_DOWN].name);
+}
+
+TEST(TransmitterJoyConCapture, LoadConfig_DestroyRecreate_PreservesDpadDefaults)
+{
+    // Save JOYCON config (AdaptToCtrlType already ran during capture)
+    Config* cfg = TransmitterTestAccess::GetConfig(tr);
+    tr->SetKeyMapMode(KEYMAP_MODE_CUSTOM);
+    cfg->gamepadCfg.ctrlType = CONTROLLER_TYPE_JOYCON;
+    tr->AdaptToCtrlType(CONTROLLER_TYPE_JOYCON);
+    cfg->gamepadCfg.targetKeyIndex[INPUT_KEY_INDEX_JCL_UP] = N3DS_KEY_INDEX_A;
+    cfg->gamepadCfg.targetKeyIndex[INPUT_KEY_INDEX_A] = N3DS_KEY_INDEX_INVALID;
+    tr->SaveConfig();
+
+    // Destroy + recreate (LoadConfig path → ParseJsonConfig calls AdaptToCtrlType)
+    tr->DestroyInstance();
+    TransmitterTestAccess::ResetInstance();
+    Transmitter::CreateInstance(&gStubApp);
+    tr = Transmitter::GetInstance();
+    cfg = TransmitterTestAccess::GetConfig(tr);
+
+    // ctrlType restored from JSON
+    CHECK_EQUAL(CONTROLLER_TYPE_JOYCON, cfg->gamepadCfg.ctrlType);
+    // JCL D-pad defaults applied (AdaptToCtrlType was called by ParseJsonConfig)
+    CHECK_EQUAL(N3DS_KEY_INDEX_DOWN, tr->GetKeyMapping(INPUT_KEY_INDEX_JCL_DOWN));
+    CHECK_EQUAL(N3DS_KEY_INDEX_LEFT, tr->GetKeyMapping(INPUT_KEY_INDEX_JCL_LEFT));
+    CHECK_EQUAL(N3DS_KEY_INDEX_RIGHT, tr->GetKeyMapping(INPUT_KEY_INDEX_JCL_RIGHT));
+    // Custom JCL_UP→A overrides default (keyMappings applied after AdaptToCtrlType)
+    CHECK_EQUAL(N3DS_KEY_INDEX_A, tr->GetKeyMapping(INPUT_KEY_INDEX_JCL_UP));
+}
+
+// ---- Cross-controller: Joy-Con setup → Xbox capture → duplicate +↓ display ----
+
+TEST(TransmitterJoyConCapture, JoyconSetup_ThenXboxDpadCapture_DuplicateDisplay)
+{
+    Config* cfg = TransmitterTestAccess::GetConfig(tr);
+    tr->SetKeyMapMode(KEYMAP_MODE_CUSTOM);
+
+    // === Step 1: Joy-Con setup (JCL_UP→A, JCL_DOWN→B) ===
+    cfg->gamepadCfg.ctrlType = CONTROLLER_TYPE_JOYCON;
+    tr->AdaptToCtrlType(CONTROLLER_TYPE_JOYCON);
+    // Capture JCL_UP for A
+    cfg->gamepadCfg.targetKeyIndex[INPUT_KEY_INDEX_JCL_UP] = N3DS_KEY_INDEX_A;
+    cfg->gamepadCfg.targetKeyIndex[INPUT_KEY_INDEX_A] = N3DS_KEY_INDEX_INVALID;
+    // Capture JCL_DOWN for B
+    cfg->gamepadCfg.targetKeyIndex[INPUT_KEY_INDEX_JCL_DOWN] = N3DS_KEY_INDEX_B;
+    cfg->gamepadCfg.targetKeyIndex[INPUT_KEY_INDEX_B] = N3DS_KEY_INDEX_INVALID;
+
+    // Verify Joy-Con setup
+    CHECK_EQUAL(N3DS_KEY_INDEX_A, tr->GetKeyMapping(INPUT_KEY_INDEX_JCL_UP));
+    CHECK_EQUAL(N3DS_KEY_INDEX_B, tr->GetKeyMapping(INPUT_KEY_INDEX_JCL_DOWN));
+    CHECK_EQUAL(CONTROLLER_TYPE_JOYCON, cfg->gamepadCfg.ctrlType);
+
+    // === Step 2: Capture Xbox D-pad DOWN via HandleMotionEvent for N3DS A ===
+    TransmitterTestAccess::ResetCaptureTracking();
+    tr->EnterKeyCapture(N3DS_KEY_INDEX_A);
+
+    GameActivityMotionEvent ev = {};
+    ev.source = AINPUT_SOURCE_JOYSTICK;
+    ev.pointers[0].values[AMOTION_EVENT_AXIS_HAT_X] = 0.0f;
+    ev.pointers[0].values[AMOTION_EVENT_AXIS_HAT_Y] = 1.0f;  // DOWN
+    tr->HandleMotionEvent(&ev);
+
+    // After capture: HAT D-pad DOWN auto-switches ctrlType JOYCON→XBOX
+    // AdaptToCtrlType(XBOX) clears JCL keys, sets Xbox D-pad defaults
+    // Then capture: INPUT_KEY_INDEX_DOWN → A
+
+    // === Verify fixed behavior ===
+    // ctrlType switched to XBOX (HAT D-pad detected during capture)
+    CHECK_EQUAL(CONTROLLER_TYPE_XBOX, cfg->gamepadCfg.ctrlType);
+
+    // Xbox D-pad DOWN → A (only one "+↓" now, JCL_DOWN was cleared by AdaptToCtrlType)
+    CHECK_EQUAL(N3DS_KEY_INDEX_A, tr->GetKeyMapping(INPUT_KEY_INDEX_DOWN));
+
+    // JCL keys cleared by AdaptToCtrlType(XBOX)
+    CHECK_EQUAL(N3DS_KEY_INDEX_INVALID, tr->GetKeyMapping(INPUT_KEY_INDEX_JCL_UP));
+    CHECK_EQUAL(N3DS_KEY_INDEX_INVALID, tr->GetKeyMapping(INPUT_KEY_INDEX_JCL_DOWN));
+
+    // Xbox D-pad defaults restored (except DOWN which was captured)
+    CHECK_EQUAL(N3DS_KEY_INDEX_UP, tr->GetKeyMapping(INPUT_KEY_INDEX_UP));
+    CHECK_EQUAL(N3DS_KEY_INDEX_LEFT, tr->GetKeyMapping(INPUT_KEY_INDEX_LEFT));
+    CHECK_EQUAL(N3DS_KEY_INDEX_RIGHT, tr->GetKeyMapping(INPUT_KEY_INDEX_RIGHT));
+
+    // No duplicate "+↓": JCL_DOWN→INVALID, only INPUT_KEY_INDEX_DOWN→A shows "+↓"
+}
+
+// ---- Sequential Joy-Con capture: L3→L, LB→ZL, LT→L conflict ----
+
+TEST(TransmitterJoyConCapture, SequentialCapture_L3L_LBZL_LTL_Conflict)
+{
+    Config* cfg = TransmitterTestAccess::GetConfig(tr);
+    tr->SetKeyMapMode(KEYMAP_MODE_CUSTOM);
+    // Assume ctrlType=XBOX (default) for Joy-Con non-D-pad keys
+
+    // Step 1: Capture L3 for N3DS L (L3→L, displaces LB→L)
+    tr->EnterKeyCapture(N3DS_KEY_INDEX_L);
+    pressKeyCode(GAMEPAD_BUTTON_L3);
+    CHECK_EQUAL(N3DS_KEY_INDEX_L, tr->GetKeyMapping(INPUT_KEY_INDEX_L3));
+    CHECK_EQUAL(N3DS_KEY_INDEX_INVALID, tr->GetKeyMapping(INPUT_KEY_INDEX_LB));
+    CHECK_FALSE(gLastCaptureConflict);
+    TransmitterTestAccess::ResetCaptureTracking();
+
+    // Step 2: Capture LB for N3DS ZL (LB→ZL, displaces LT→ZL)
+    tr->EnterKeyCapture(N3DS_KEY_INDEX_ZL);
+    pressKeyCode(GAMEPAD_BUTTON_LB);
+    CHECK_EQUAL(N3DS_KEY_INDEX_ZL, tr->GetKeyMapping(INPUT_KEY_INDEX_LB));
+    CHECK_EQUAL(N3DS_KEY_INDEX_INVALID, tr->GetKeyMapping(INPUT_KEY_INDEX_LT));
+    CHECK_FALSE(gLastCaptureConflict);
+    TransmitterTestAccess::ResetCaptureTracking();
+
+    // Step 3: Capture LT for N3DS L — LT was displaced to INVALID in step 2
+    // Should succeed without conflict, NOT show "ZL already mapped"
+    tr->EnterKeyCapture(N3DS_KEY_INDEX_L);
+    pressKeyCode(GAMEPAD_BUTTON_LT);
+    CHECK_EQUAL(N3DS_KEY_INDEX_L, tr->GetKeyMapping(INPUT_KEY_INDEX_LT));
+    // Old occupant (L3→L) displaced to INVALID
+    CHECK_EQUAL(N3DS_KEY_INDEX_INVALID, tr->GetKeyMapping(INPUT_KEY_INDEX_L3));
+    CHECK_EQUAL(1, gCaptureResultCallCount);
+    CHECK_FALSE(gLastCaptureConflict);
+}
+
+TEST(TransmitterJoyConCapture, SequentialCapture_R3R_RBZR_RTR_Conflict)
+{
+    Config* cfg = TransmitterTestAccess::GetConfig(tr);
+    tr->SetKeyMapMode(KEYMAP_MODE_CUSTOM);
+
+    // Step 1: Capture R3 for N3DS R (R3→R, displaces RB→R)
+    tr->EnterKeyCapture(N3DS_KEY_INDEX_R);
+    pressKeyCode(GAMEPAD_BUTTON_R3);
+    CHECK_EQUAL(N3DS_KEY_INDEX_R, tr->GetKeyMapping(INPUT_KEY_INDEX_R3));
+    CHECK_EQUAL(N3DS_KEY_INDEX_INVALID, tr->GetKeyMapping(INPUT_KEY_INDEX_RB));
+    TransmitterTestAccess::ResetCaptureTracking();
+
+    // Step 2: Capture RB for N3DS ZR (RB→ZR, displaces RT→ZR)
+    tr->EnterKeyCapture(N3DS_KEY_INDEX_ZR);
+    pressKeyCode(GAMEPAD_BUTTON_RB);
+    CHECK_EQUAL(N3DS_KEY_INDEX_ZR, tr->GetKeyMapping(INPUT_KEY_INDEX_RB));
+    CHECK_EQUAL(N3DS_KEY_INDEX_INVALID, tr->GetKeyMapping(INPUT_KEY_INDEX_RT));
+    TransmitterTestAccess::ResetCaptureTracking();
+
+    // Step 3: Capture RT for N3DS R — RT was displaced to INVALID in step 2
+    // Should succeed without conflict, NOT show "ZR already mapped"
+    tr->EnterKeyCapture(N3DS_KEY_INDEX_R);
+    pressKeyCode(GAMEPAD_BUTTON_RT);
+    CHECK_EQUAL(N3DS_KEY_INDEX_R, tr->GetKeyMapping(INPUT_KEY_INDEX_RT));
+    CHECK_EQUAL(N3DS_KEY_INDEX_INVALID, tr->GetKeyMapping(INPUT_KEY_INDEX_R3));
+    CHECK_FALSE(gLastCaptureConflict);
 }

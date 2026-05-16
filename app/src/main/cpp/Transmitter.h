@@ -99,7 +99,8 @@ private:
     bool IsCapturableKey(INPUT_KEY_INDEX idx);
     bool IsInputKeyRelevantForCtrlType(INPUT_KEY_INDEX idx, CONTROLLER_TYPE type);
     CONTROLLER_TYPE DetectCtrlTypeFromKey(INPUT_KEY_INDEX idx);
-    INPUT_KEY_INDEX FindPhysKeyForN3dsKey(N3DS_KEY_INDEX n3dsKey, CONTROLLER_TYPE type);
+    INPUT_KEY_INDEX FindPhysKeyForN3dsKey(N3DS_KEY_INDEX n3dsKey, CONTROLLER_TYPE type,
+                                            INPUT_KEY_INDEX skipIdx = INPUT_KEY_INDEX_INVALID);
     using clock = std::chrono::high_resolution_clock;
     decltype(clock::now()) mLastTurboTime[MAX_N3DS_KEY_TURBO_INDEX];
     decltype(clock::now()) mLastSendTime;

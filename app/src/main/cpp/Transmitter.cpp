@@ -257,7 +257,10 @@ void Transmitter::ParseJsonConfig(cJSON *root)
     {
         int typeVal = ct->valueint;
         if(typeVal >= 0 && typeVal < CONTROLLER_TYPE_UNKNOWN)
+        {
             mCfg.gamepadCfg.ctrlType = static_cast<CONTROLLER_TYPE>(typeVal);
+            AdaptToCtrlType(mCfg.gamepadCfg.ctrlType);
+        }
     }
 
     cJSON *keyMappings = cJSON_GetObjectItem(root, "keyMappings");
@@ -653,10 +656,12 @@ CONTROLLER_TYPE Transmitter::DetectCtrlTypeFromKey(INPUT_KEY_INDEX idx)
     }
 }
 
-INPUT_KEY_INDEX Transmitter::FindPhysKeyForN3dsKey(N3DS_KEY_INDEX n3dsKey, CONTROLLER_TYPE type)
+INPUT_KEY_INDEX Transmitter::FindPhysKeyForN3dsKey(N3DS_KEY_INDEX n3dsKey, CONTROLLER_TYPE type,
+                                                    INPUT_KEY_INDEX skipIdx)
 {
     for(int i = 0; i < MAX_INPUT_KEY_INDEX; ++i)
     {
+        if(static_cast<INPUT_KEY_INDEX>(i) == skipIdx) continue;
         if(!IsInputKeyRelevantForCtrlType(static_cast<INPUT_KEY_INDEX>(i), type))
             continue;
         if(mCfg.gamepadCfg.targetKeyIndex[i] == n3dsKey)
@@ -698,25 +703,17 @@ void Transmitter::HandleKeyEvent(GameActivityKeyEvent* keyEvent)
             // Whitelist: only capture specific keys
             if(!IsCapturableKey(inIndex)) return;
 
-            // Save old target BEFORE AdaptToCtrlType (which may modify mappings)
-            N3DS_KEY_INDEX oldTarget = mCfg.gamepadCfg.targetKeyIndex[inIndex];
-
             // Auto-detect controller type from D-pad keys
-            bool adaptRan = false;
             CONTROLLER_TYPE detected = DetectCtrlTypeFromKey(inIndex);
             if(detected != mCfg.gamepadCfg.ctrlType)
             {
                 mCfg.gamepadCfg.ctrlType = detected;
                 AdaptToCtrlType(detected);
-                adaptRan = true;
             }
 
-            // If AdaptToCtrlType just gave this key a default, use it for displacement
-            N3DS_KEY_INDEX displacedValue = oldTarget;
-            if(adaptRan && oldTarget == N3DS_KEY_INDEX_INVALID)
-                displacedValue = mCfg.gamepadCfg.targetKeyIndex[inIndex];
-
+            // Read oldTarget AFTER AdaptToCtrlType so defaults count as real mappings
             CONTROLLER_TYPE ctrlType = mCfg.gamepadCfg.ctrlType;
+            N3DS_KEY_INDEX oldTarget = mCfg.gamepadCfg.targetKeyIndex[inIndex];
 
             if(oldTarget == mCaptureTargetN3dsKey)
             {
@@ -734,9 +731,9 @@ void Transmitter::HandleKeyEvent(GameActivityKeyEvent* keyEvent)
                 N3DS_KEY_INDEX target = mCaptureTargetN3dsKey;
                 mCfg.gamepadCfg.targetKeyIndex[inIndex] = target;
 
-                INPUT_KEY_INDEX oldPhys = FindPhysKeyForN3dsKey(target, ctrlType);
-                if(oldPhys != INPUT_KEY_INDEX_INVALID && oldPhys != inIndex)
-                    mCfg.gamepadCfg.targetKeyIndex[oldPhys] = displacedValue;
+                INPUT_KEY_INDEX oldPhys = FindPhysKeyForN3dsKey(target, ctrlType, inIndex);
+                if(oldPhys != INPUT_KEY_INDEX_INVALID)
+                    mCfg.gamepadCfg.targetKeyIndex[oldPhys] = N3DS_KEY_INDEX_INVALID;
 
                 mCaptureTargetN3dsKey = N3DS_KEY_INDEX_INVALID;
                 SaveConfig();
@@ -855,12 +852,18 @@ void Transmitter::HandleMotionEvent(GameActivityMotionEvent* motionEvent)
                     // Save oldTarget BEFORE AdaptToCtrlType (which may modify mappings)
                     N3DS_KEY_INDEX oldTarget = mCfg.gamepadCfg.targetKeyIndex[capIdx];
 
-                    // HAT D-pad → Xbox/Pro Controller (only auto-detect on first use)
-                    if(!isTrigger && mCfg.gamepadCfg.ctrlType == CONTROLLER_TYPE_UNKNOWN)
+                    // HAT D-pad → Xbox/Pro Controller (auto-switch from any non-XBOX type)
+                    bool adaptRan = false;
+                    if(!isTrigger && mCfg.gamepadCfg.ctrlType != CONTROLLER_TYPE_XBOX)
                     {
+                        adaptRan = true;
                         mCfg.gamepadCfg.ctrlType = CONTROLLER_TYPE_XBOX;
                         AdaptToCtrlType(CONTROLLER_TYPE_XBOX);
                     }
+
+                    N3DS_KEY_INDEX displacedValue = oldTarget;
+                    if(adaptRan && oldTarget == N3DS_KEY_INDEX_INVALID)
+                        displacedValue = mCfg.gamepadCfg.targetKeyIndex[capIdx];
 
                     CONTROLLER_TYPE ctrlType = mCfg.gamepadCfg.ctrlType;
 
@@ -879,9 +882,9 @@ void Transmitter::HandleMotionEvent(GameActivityMotionEvent* motionEvent)
                         N3DS_KEY_INDEX target = mCaptureTargetN3dsKey;
                         mCfg.gamepadCfg.targetKeyIndex[capIdx] = target;
 
-                        INPUT_KEY_INDEX oldPhys = FindPhysKeyForN3dsKey(target, ctrlType);
-                        if(oldPhys != INPUT_KEY_INDEX_INVALID && oldPhys != capIdx)
-                            mCfg.gamepadCfg.targetKeyIndex[oldPhys] = N3DS_KEY_INDEX_INVALID;
+                        INPUT_KEY_INDEX oldPhys = FindPhysKeyForN3dsKey(target, ctrlType, capIdx);
+                        if(oldPhys != INPUT_KEY_INDEX_INVALID)
+                            mCfg.gamepadCfg.targetKeyIndex[oldPhys] = displacedValue;
 
                         mCaptureTargetN3dsKey = N3DS_KEY_INDEX_INVALID;
                         SaveConfig();
@@ -897,13 +900,10 @@ void Transmitter::HandleMotionEvent(GameActivityMotionEvent* motionEvent)
                         callOnCaptureResult(gN3DsKeyTab[mCaptureTargetN3dsKey].name,
                                             gInputKeyTab[capIdx].name, true,
                                             gN3DsKeyTab[oldTarget].name);
-                        // Do NOT suppress HAT in conflict: let D-pad state track
-                        // the held direction so subsequent events won't re-trigger
                     }
                     if(consumed)
                     {
                         if(!isTrigger) { hx = 0; hy = 0; }
-                        // For triggers: suppress the state update so capture "consumes" it
                         else if(capIdx == INPUT_KEY_INDEX_LT) lt = 0;
                         else if(capIdx == INPUT_KEY_INDEX_RT) rt = 0;
                     }
@@ -1219,8 +1219,12 @@ void Transmitter::SetKeyMapMode(int mode)
     }
     else
     {
-        // Reload keyMappings from JSON (restores previously saved custom state)
-        // Save after reload to persist the mode change (SIMPLE→CUSTOM)
+        // Reload keyMappings from JSON, but apply AdaptToCtrlType first
+        // so D-pad defaults are set before custom mappings override them
+        int savedMappings[MAX_N3DS_KEY_INDEX];
+        for(int i = 0; i < MAX_N3DS_KEY_INDEX; ++i)
+            savedMappings[i] = -1;  // -1 = no saved mapping
+
         std::string jsonPath = gCfgPath + "/config.json";
         auto fd = open(jsonPath.c_str(), O_RDONLY);
         if(fd >= 0)
@@ -1245,11 +1249,17 @@ void Transmitter::SetKeyMapMode(int mode)
                                 for(int i = 0; i < MAX_N3DS_KEY_INDEX; ++i)
                                 {
                                     cJSON *physIdx = cJSON_GetObjectItem(keyMappings, gN3DsKeyTab[i].name);
-                                    if(!cJSON_IsNumber(physIdx)) continue;
-                                    int j = physIdx->valueint;
-                                    if(j >= 0 && j < MAX_INPUT_KEY_INDEX)
-                                        mCfg.gamepadCfg.targetKeyIndex[j] = static_cast<N3DS_KEY_INDEX>(i);
+                                    if(cJSON_IsNumber(physIdx))
+                                        savedMappings[i] = physIdx->valueint;
                                 }
+                            }
+                            // Also restore ctrlType from JSON
+                            cJSON *ct = cJSON_GetObjectItem(root, "ctrlType");
+                            if(cJSON_IsNumber(ct))
+                            {
+                                int typeVal = ct->valueint;
+                                if(typeVal >= 0 && typeVal < CONTROLLER_TYPE_UNKNOWN)
+                                    mCfg.gamepadCfg.ctrlType = static_cast<CONTROLLER_TYPE>(typeVal);
                             }
                             cJSON_Delete(root);
                         }
@@ -1258,6 +1268,17 @@ void Transmitter::SetKeyMapMode(int mode)
                 }
             }
             close(fd);
+        }
+
+        // Apply D-pad defaults for current ctrlType
+        AdaptToCtrlType(mCfg.gamepadCfg.ctrlType);
+
+        // Apply saved custom mappings on top of defaults
+        for(int i = 0; i < MAX_N3DS_KEY_INDEX; ++i)
+        {
+            int physIdx = savedMappings[i];
+            if(physIdx >= 0 && physIdx < MAX_INPUT_KEY_INDEX)
+                mCfg.gamepadCfg.targetKeyIndex[physIdx] = static_cast<N3DS_KEY_INDEX>(i);
         }
     }
 }
@@ -1326,9 +1347,8 @@ void Transmitter::ResolveKeyConflict(bool accept, int sessionId)
     if(accept)
     {
         CONTROLLER_TYPE ctrlType = mCfg.gamepadCfg.ctrlType;
-        INPUT_KEY_INDEX oldPhysIdx = FindPhysKeyForN3dsKey(mCaptureTargetN3dsKey, ctrlType);
-        if(oldPhysIdx == mConflictInputIdx)
-            oldPhysIdx = INPUT_KEY_INDEX_INVALID;
+        INPUT_KEY_INDEX oldPhysIdx = FindPhysKeyForN3dsKey(mCaptureTargetN3dsKey, ctrlType,
+                                                            mConflictInputIdx);
 
         // Swap: new physical key → capture target
         mCfg.gamepadCfg.targetKeyIndex[mConflictInputIdx] = mCaptureTargetN3dsKey;
