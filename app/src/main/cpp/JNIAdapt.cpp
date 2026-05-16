@@ -370,6 +370,14 @@ Java_com_jingrong_inputredirectionclient_1android_MainActivity_getCaptureSession
 }
 
 extern "C"
+JNIEXPORT void JNICALL
+Java_com_jingrong_inputredirectionclient_1android_MainActivity_resetKeyMapping(
+        JNIEnv *env, jobject thiz)
+{
+    Transmitter::GetInstance()->ResetKeyMapping();
+}
+
+extern "C"
 JNIEXPORT jstring JNICALL
 Java_com_jingrong_inputredirectionclient_1android_MainActivity_getInputKeyName(
         JNIEnv *env, jobject thiz, jint inputIdx)

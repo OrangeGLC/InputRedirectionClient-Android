@@ -92,6 +92,7 @@ public class MainActivity extends GameActivity {
     public native void exitKeyCapture();
     public native void resolveKeyConflict(boolean accept, int sessionId);
     public native int getCaptureSessionId();
+    public native void resetKeyMapping();
     public native String getInputKeyName(int inputIdx);
     public void updateUI()
     {
@@ -180,6 +181,7 @@ public class MainActivity extends GameActivity {
         boolean swap = getSwapJoysticks();
         swSwapSticks.setChecked(swap);
         swSwapSticks.setVisibility(mode == KEYMAP_MODE_CUSTOM ? View.VISIBLE : View.GONE);
+        btResetMapping.setVisibility(mode == KEYMAP_MODE_CUSTOM ? View.VISIBLE : View.GONE);
         swSwapSticksSimple.setChecked(swap);
 
         // Update custom mode key mapping entries
@@ -288,6 +290,7 @@ public class MainActivity extends GameActivity {
         layoutCustomMode = findViewById(R.id.layout_custom_mode);
         swSwapSticks = findViewById(R.id.switch_swap_sticks);
         swSwapSticksSimple = findViewById(R.id.switch_swap_sticks_simple);
+        btResetMapping = findViewById(R.id.bt_reset_mapping);
 
         mKeyMapEdits[N3DS_KEY_INDEX_A] = findViewById(R.id.et_map_A);
         mKeyMapEdits[N3DS_KEY_INDEX_B] = findViewById(R.id.et_map_B);
@@ -429,6 +432,24 @@ public class MainActivity extends GameActivity {
         };
         swSwapSticks.setOnCheckedChangeListener(swapListener);
         swSwapSticksSimple.setOnCheckedChangeListener(swapListener);
+
+        // Reset defaults button
+        btResetMapping.setOnClickListener(v -> {
+            new AlertDialog.Builder(this)
+                .setTitle(R.string.reset_defaults)
+                .setMessage(R.string.reset_defaults_confirm)
+                .setNegativeButton(android.R.string.cancel, null)
+                .setPositiveButton(android.R.string.ok, (d, w) -> {
+                    if (mCapturingN3dsIdx >= 0) {
+                        exitKeyCapture();
+                        mCapturingN3dsIdx = -1;
+                        mConflictSessionId = 0;
+                    }
+                    resetKeyMapping();
+                    updateUI();
+                })
+                .show();
+        });
 
         // Key mapping entry click listeners (on EditText)
         for (int i = 0; i < mKeyMapEdits.length; i++) {
@@ -684,6 +705,7 @@ public class MainActivity extends GameActivity {
     private LinearLayout layoutCustomMode;
     private Switch swSwapSticks;
     private Switch swSwapSticksSimple;
+    private Button btResetMapping;
     private Button[] mKeyMapEdits = new Button[17];
     private int mCapturingN3dsIdx = -1;
     private int mConflictSessionId = 0;

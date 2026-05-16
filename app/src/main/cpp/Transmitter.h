@@ -67,6 +67,7 @@ public:
     void ExitKeyCapture();
     void ResolveKeyConflict(bool accept, int sessionId);
     int GetCaptureSessionId();
+    void ResetKeyMapping();
     void SetTurbo(N3DS_KEY_INDEX index, bool flg);
     bool GetTurbo(N3DS_KEY_INDEX index);
     void SetTurboInterval(u32 ms);

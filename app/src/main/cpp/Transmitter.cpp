@@ -1334,6 +1334,18 @@ int Transmitter::GetCaptureSessionId()
     return mCaptureSessionId;
 }
 
+void Transmitter::ResetKeyMapping()
+{
+    ExitKeyCapture(); // acquires its own lock
+    std::lock_guard<std::mutex> lock(mCaptureMutex);
+    SetDefaultKeyMapValue();
+    SetInvertAB(mCfg.gamepadCfg.invertAB);
+    SetInvertXY(mCfg.gamepadCfg.invertXY);
+    AdaptToCtrlType(mCfg.gamepadCfg.ctrlType);
+    SaveConfig();
+    updateUI();
+}
+
 void Transmitter::ResolveKeyConflict(bool accept, int sessionId)
 {
     std::lock_guard<std::mutex> lock(mCaptureMutex);

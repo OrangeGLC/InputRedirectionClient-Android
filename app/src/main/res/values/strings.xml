@@ -9,6 +9,8 @@
     <string name="capture_prompt_title">Key Capture</string>
     <string name="capture_prompt_msg">Please press a controller button</string>
     <string name="capture_prompt_cancel">Cancel</string>
+    <string name="reset_defaults">Reset Default</string>
+    <string name="reset_defaults_confirm">This will reset all key mappings to their defaults. Continue?</string>
     <string name="conflict_title">Key Conflict</string>
     <string name="conflict_msg">%1$s is already mapped to 3DS %2$s. Proceeding will remap 3DS %2$s to another free key. Continue?</string>
     <string name="conflict_cancel">Cancel</string>

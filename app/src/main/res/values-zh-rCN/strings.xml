@@ -10,6 +10,8 @@
     <string name="capture_prompt_title">按键捕获</string>
     <string name="capture_prompt_msg">请按下手柄按键</string>
     <string name="capture_prompt_cancel">取消</string>
+    <string name="reset_defaults">恢复默认</string>
+    <string name="reset_defaults_confirm">将恢复所有按键映射为默认值，是否继续？</string>
     <string name="conflict_title">按键冲突</string>
     <string name="conflict_msg">%1$s 已映射到3DS的 %2$s 按键，继续设置将为3DS的 %2$s 按键修改为其他不冲突的按键，是否继续？</string>
     <string name="conflict_cancel">放弃</string>
