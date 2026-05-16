@@ -1139,3 +1139,75 @@ TEST(TransmitterJoyConCapture, TriggerLT_SuppressedWhenConsumed)
     KEY_STATE* keys = TransmitterTestAccess::GetKeysState(tr);
     CHECK_EQUAL(KEY_STATE_UP, keys[INPUT_KEY_INDEX_LT]);
 }
+
+// ---- Mode switch persistence: CUSTOM → SIMPLE → CUSTOM ----
+
+TEST(TransmitterJoyConCapture, ModeSwitch_CustomToSimpleToCustom_PreservesMappings)
+{
+    Config* cfg = TransmitterTestAccess::GetConfig(tr);
+
+    // Step 1: Switch to CUSTOM mode and set up mappings (simulate capture: clear defaults)
+    tr->SetKeyMapMode(KEYMAP_MODE_CUSTOM);
+    cfg->gamepadCfg.targetKeyIndex[INPUT_KEY_INDEX_A] = N3DS_KEY_INDEX_B;
+    cfg->gamepadCfg.targetKeyIndex[INPUT_KEY_INDEX_B] = N3DS_KEY_INDEX_A;
+    cfg->gamepadCfg.targetKeyIndex[INPUT_KEY_INDEX_X] = N3DS_KEY_INDEX_Y;
+    // Clear displaced old occupants (as capture would)
+    cfg->gamepadCfg.targetKeyIndex[INPUT_KEY_INDEX_Y] = N3DS_KEY_INDEX_INVALID;
+    cfg->gamepadCfg.targetKeyIndex[INPUT_KEY_INDEX_JCL_UP] = N3DS_KEY_INDEX_UP;
+    cfg->gamepadCfg.targetKeyIndex[INPUT_KEY_INDEX_JCL_DOWN] = N3DS_KEY_INDEX_DOWN;
+    // Clear displaced defaults to avoid duplicate N3DS key mappings
+    cfg->gamepadCfg.targetKeyIndex[INPUT_KEY_INDEX_UP] = N3DS_KEY_INDEX_INVALID;
+    cfg->gamepadCfg.targetKeyIndex[INPUT_KEY_INDEX_DOWN] = N3DS_KEY_INDEX_INVALID;
+
+    // Step 2: Switch to SIMPLE mode (triggers SaveConfig before reset)
+    tr->SetKeyMapMode(KEYMAP_MODE_SIMPLE);
+
+    // Verify defaults are active in SIMPLE mode
+    CHECK_EQUAL(N3DS_KEY_INDEX_A, tr->GetKeyMapping(INPUT_KEY_INDEX_A));
+    CHECK_EQUAL(N3DS_KEY_INDEX_B, tr->GetKeyMapping(INPUT_KEY_INDEX_B));
+
+    // Step 3: Switch back to CUSTOM mode (reloads from JSON)
+    tr->SetKeyMapMode(KEYMAP_MODE_CUSTOM);
+
+    // Verify custom mappings are restored
+    CHECK_EQUAL(N3DS_KEY_INDEX_B, tr->GetKeyMapping(INPUT_KEY_INDEX_A));
+    CHECK_EQUAL(N3DS_KEY_INDEX_A, tr->GetKeyMapping(INPUT_KEY_INDEX_B));
+    CHECK_EQUAL(N3DS_KEY_INDEX_Y, tr->GetKeyMapping(INPUT_KEY_INDEX_X));
+    CHECK_EQUAL(N3DS_KEY_INDEX_UP, tr->GetKeyMapping(INPUT_KEY_INDEX_JCL_UP));
+    CHECK_EQUAL(N3DS_KEY_INDEX_DOWN, tr->GetKeyMapping(INPUT_KEY_INDEX_JCL_DOWN));
+}
+
+TEST(TransmitterJoyConCapture, ModeSwitch_EmptyCustom_PreservesDefaults)
+{
+    // Switch to CUSTOM with no modifications, then back to SIMPLE
+    tr->SetKeyMapMode(KEYMAP_MODE_CUSTOM);
+    tr->SetKeyMapMode(KEYMAP_MODE_SIMPLE);
+
+    // Defaults should be intact
+    CHECK_EQUAL(N3DS_KEY_INDEX_A, tr->GetKeyMapping(INPUT_KEY_INDEX_A));
+    CHECK_EQUAL(N3DS_KEY_INDEX_B, tr->GetKeyMapping(INPUT_KEY_INDEX_B));
+    CHECK_EQUAL(N3DS_KEY_INDEX_UP, tr->GetKeyMapping(INPUT_KEY_INDEX_UP));
+    CHECK_EQUAL(N3DS_KEY_INDEX_DOWN, tr->GetKeyMapping(INPUT_KEY_INDEX_DOWN));
+}
+
+TEST(TransmitterJoyConCapture, ModeSwitch_PreservesCtrlType)
+{
+    Config* cfg = TransmitterTestAccess::GetConfig(tr);
+
+    // Set JOYCON type and custom mappings (simulate capture)
+    tr->SetKeyMapMode(KEYMAP_MODE_CUSTOM);
+    cfg->gamepadCfg.ctrlType = CONTROLLER_TYPE_JOYCON;
+    cfg->gamepadCfg.targetKeyIndex[INPUT_KEY_INDEX_JCL_UP] = N3DS_KEY_INDEX_A;
+    cfg->gamepadCfg.targetKeyIndex[INPUT_KEY_INDEX_LB] = N3DS_KEY_INDEX_B;
+    cfg->gamepadCfg.targetKeyIndex[INPUT_KEY_INDEX_A] = N3DS_KEY_INDEX_INVALID;
+    cfg->gamepadCfg.targetKeyIndex[INPUT_KEY_INDEX_B] = N3DS_KEY_INDEX_INVALID;
+
+    // Round trip
+    tr->SetKeyMapMode(KEYMAP_MODE_SIMPLE);
+    tr->SetKeyMapMode(KEYMAP_MODE_CUSTOM);
+
+    // ctrlType and mappings preserved
+    CHECK_EQUAL(CONTROLLER_TYPE_JOYCON, cfg->gamepadCfg.ctrlType);
+    CHECK_EQUAL(N3DS_KEY_INDEX_A, tr->GetKeyMapping(INPUT_KEY_INDEX_JCL_UP));
+    CHECK_EQUAL(N3DS_KEY_INDEX_B, tr->GetKeyMapping(INPUT_KEY_INDEX_LB));
+}

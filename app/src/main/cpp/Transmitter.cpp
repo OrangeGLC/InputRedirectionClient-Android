@@ -1202,13 +1202,15 @@ bool Transmitter::NeedTurbo()
 void Transmitter::SetKeyMapMode(int mode)
 {
     if(mode != KEYMAP_MODE_SIMPLE && mode != KEYMAP_MODE_CUSTOM) return;
-    // Leaving custom mode: persist current mappings before reset
-    if(mCfg.gamepadCfg.keyMapMode == KEYMAP_MODE_CUSTOM && mode == KEYMAP_MODE_SIMPLE)
+
+    bool wasCustom = (mCfg.gamepadCfg.keyMapMode == KEYMAP_MODE_CUSTOM);
+
+    // Leaving custom mode: persist mappings before resetting to defaults
+    if(wasCustom && mode == KEYMAP_MODE_SIMPLE)
         SaveConfig();
-    // Entering custom mode: persist the mode change
-    else if(mCfg.gamepadCfg.keyMapMode == KEYMAP_MODE_SIMPLE && mode == KEYMAP_MODE_CUSTOM)
-        SaveConfig();
+
     mCfg.gamepadCfg.keyMapMode = static_cast<KEYMAP_MODE>(mode);
+
     if(mode == KEYMAP_MODE_SIMPLE)
     {
         SetDefaultKeyMapValue();
@@ -1217,7 +1219,8 @@ void Transmitter::SetKeyMapMode(int mode)
     }
     else
     {
-        // Reload keyMappings from JSON
+        // Reload keyMappings from JSON (restores previously saved custom state)
+        // Save after reload to persist the mode change (SIMPLE→CUSTOM)
         std::string jsonPath = gCfgPath + "/config.json";
         auto fd = open(jsonPath.c_str(), O_RDONLY);
         if(fd >= 0)
