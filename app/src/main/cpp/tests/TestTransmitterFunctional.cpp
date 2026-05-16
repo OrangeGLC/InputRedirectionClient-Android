@@ -1047,3 +1047,95 @@ TEST(TransmitterJoyConCapture, NonGamepadSource_IgnoredDuringCapture)
     CHECK_EQUAL(N3DS_KEY_INDEX_A, TransmitterTestAccess::GetCaptureTarget(tr));
     CHECK_EQUAL(0, gCaptureResultCallCount);
 }
+
+// ---- Analog trigger capture via HandleMotionEvent ----
+
+TEST(TransmitterJoyConCapture, TriggerLT_Captured)
+{
+    // Clear LT→ZL default to avoid conflict
+    Config* cfg = TransmitterTestAccess::GetConfig(tr);
+    cfg->gamepadCfg.targetKeyIndex[INPUT_KEY_INDEX_LT] = N3DS_KEY_INDEX_INVALID;
+
+    tr->EnterKeyCapture(N3DS_KEY_INDEX_A);
+
+    GameActivityMotionEvent ev = {};
+    ev.source = AINPUT_SOURCE_JOYSTICK;
+    ev.pointers[0].values[AMOTION_EVENT_AXIS_BRAKE] = 1.0f;
+    tr->HandleMotionEvent(&ev);
+
+    // LT captured → A
+    CHECK_EQUAL(N3DS_KEY_INDEX_A, tr->GetKeyMapping(INPUT_KEY_INDEX_LT));
+    // Old A displaced
+    CHECK_EQUAL(N3DS_KEY_INDEX_INVALID, tr->GetKeyMapping(INPUT_KEY_INDEX_A));
+    CHECK_EQUAL(1, gCaptureResultCallCount);
+    CHECK_FALSE(gLastCaptureConflict);
+}
+
+TEST(TransmitterJoyConCapture, TriggerRT_Captured)
+{
+    // Clear RT→ZR default to avoid conflict
+    Config* cfg = TransmitterTestAccess::GetConfig(tr);
+    cfg->gamepadCfg.targetKeyIndex[INPUT_KEY_INDEX_RT] = N3DS_KEY_INDEX_INVALID;
+
+    tr->EnterKeyCapture(N3DS_KEY_INDEX_B);
+
+    GameActivityMotionEvent ev = {};
+    ev.source = AINPUT_SOURCE_JOYSTICK;
+    ev.pointers[0].values[AMOTION_EVENT_AXIS_GAS] = 1.0f;
+    tr->HandleMotionEvent(&ev);
+
+    // RT captured → B
+    CHECK_EQUAL(N3DS_KEY_INDEX_B, tr->GetKeyMapping(INPUT_KEY_INDEX_RT));
+    CHECK_EQUAL(1, gCaptureResultCallCount);
+    CHECK_FALSE(gLastCaptureConflict);
+}
+
+TEST(TransmitterJoyConCapture, TriggerLT_NotCapturedWhenReleased)
+{
+    tr->EnterKeyCapture(N3DS_KEY_INDEX_A);
+
+    // Trigger at 0 (released) → no rising edge
+    GameActivityMotionEvent ev = {};
+    ev.source = AINPUT_SOURCE_JOYSTICK;
+    ev.pointers[0].values[AMOTION_EVENT_AXIS_BRAKE] = 0.0f;
+    tr->HandleMotionEvent(&ev);
+
+    // No capture occurred
+    CHECK_EQUAL(N3DS_KEY_INDEX_A, TransmitterTestAccess::GetCaptureTarget(tr));
+    CHECK_EQUAL(0, gCaptureResultCallCount);
+}
+
+TEST(TransmitterJoyConCapture, TriggerLT_ConflictDetected)
+{
+    // LT already mapped to ZL by default
+    tr->EnterKeyCapture(N3DS_KEY_INDEX_A);
+
+    GameActivityMotionEvent ev = {};
+    ev.source = AINPUT_SOURCE_JOYSTICK;
+    ev.pointers[0].values[AMOTION_EVENT_AXIS_BRAKE] = 1.0f;
+    tr->HandleMotionEvent(&ev);
+
+    // Conflict: LT → ZL, target is A
+    CHECK_EQUAL(1, gCaptureResultCallCount);
+    CHECK(gLastCaptureConflict);
+    STRCMP_EQUAL("ZL", gLastCaptureConflictN3dsName);
+}
+
+TEST(TransmitterJoyConCapture, TriggerLT_SuppressedWhenConsumed)
+{
+    // Clear LT→ZL default to avoid conflict
+    Config* cfg = TransmitterTestAccess::GetConfig(tr);
+    cfg->gamepadCfg.targetKeyIndex[INPUT_KEY_INDEX_LT] = N3DS_KEY_INDEX_INVALID;
+
+    // First motion event: trigger rising edge → captured
+    tr->EnterKeyCapture(N3DS_KEY_INDEX_A);
+    GameActivityMotionEvent ev = {};
+    ev.source = AINPUT_SOURCE_JOYSTICK;
+    ev.pointers[0].values[AMOTION_EVENT_AXIS_BRAKE] = 1.0f;
+    tr->HandleMotionEvent(&ev);
+    CHECK_EQUAL(1, gCaptureResultCallCount);
+
+    // Trigger state should be UP (event consumed by capture, lt set to 0)
+    KEY_STATE* keys = TransmitterTestAccess::GetKeysState(tr);
+    CHECK_EQUAL(KEY_STATE_UP, keys[INPUT_KEY_INDEX_LT]);
+}

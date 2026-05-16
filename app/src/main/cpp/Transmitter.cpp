@@ -819,7 +819,7 @@ void Transmitter::HandleMotionEvent(GameActivityMotionEvent* motionEvent)
               mJoystick[JOYSTICK_R].x, mJoystick[JOYSTICK_R].y,
              hx, hy, lt, rt);
 
-        /* D-pad key capture: intercept HAT axis rising edges */
+        /* D-pad and analog trigger capture: intercept HAT/trigger rising edges */
         if(mCaptureTargetN3dsKey != N3DS_KEY_INDEX_INVALID)
         {
             std::lock_guard<std::mutex> lock(mCaptureMutex);
@@ -827,6 +827,9 @@ void Transmitter::HandleMotionEvent(GameActivityMotionEvent* motionEvent)
             if(mCaptureTargetN3dsKey != N3DS_KEY_INDEX_INVALID)
             {
                 INPUT_KEY_INDEX capIdx = INPUT_KEY_INDEX_INVALID;
+                bool isTrigger = false;
+
+                // Check D-pad HAT first
                 if(hx == 1 && mKeysState[INPUT_KEY_INDEX_RIGHT] != KEY_STATE_DOWN)
                     capIdx = INPUT_KEY_INDEX_RIGHT;
                 else if(hx == -1 && mKeysState[INPUT_KEY_INDEX_LEFT] != KEY_STATE_DOWN)
@@ -835,6 +838,17 @@ void Transmitter::HandleMotionEvent(GameActivityMotionEvent* motionEvent)
                     capIdx = INPUT_KEY_INDEX_DOWN;
                 else if(hy == -1 && mKeysState[INPUT_KEY_INDEX_UP] != KEY_STATE_DOWN)
                     capIdx = INPUT_KEY_INDEX_UP;
+                // Then check analog triggers (LT/RT)
+                else if(lt > 0 && mKeysState[INPUT_KEY_INDEX_LT] != KEY_STATE_DOWN)
+                {
+                    capIdx = INPUT_KEY_INDEX_LT;
+                    isTrigger = true;
+                }
+                else if(rt > 0 && mKeysState[INPUT_KEY_INDEX_RT] != KEY_STATE_DOWN)
+                {
+                    capIdx = INPUT_KEY_INDEX_RT;
+                    isTrigger = true;
+                }
 
                 if(capIdx != INPUT_KEY_INDEX_INVALID)
                 {
@@ -842,7 +856,7 @@ void Transmitter::HandleMotionEvent(GameActivityMotionEvent* motionEvent)
                     N3DS_KEY_INDEX oldTarget = mCfg.gamepadCfg.targetKeyIndex[capIdx];
 
                     // HAT D-pad → Xbox/Pro Controller (only auto-detect on first use)
-                    if(mCfg.gamepadCfg.ctrlType == CONTROLLER_TYPE_UNKNOWN)
+                    if(!isTrigger && mCfg.gamepadCfg.ctrlType == CONTROLLER_TYPE_UNKNOWN)
                     {
                         mCfg.gamepadCfg.ctrlType = CONTROLLER_TYPE_XBOX;
                         AdaptToCtrlType(CONTROLLER_TYPE_XBOX);
@@ -883,10 +897,16 @@ void Transmitter::HandleMotionEvent(GameActivityMotionEvent* motionEvent)
                         callOnCaptureResult(gN3DsKeyTab[mCaptureTargetN3dsKey].name,
                                             gInputKeyTab[capIdx].name, true,
                                             gN3DsKeyTab[oldTarget].name);
-                        // Do NOT suppress HAT: let D-pad state track the held direction
-                        // so subsequent motion events won't re-trigger the same conflict
+                        // Do NOT suppress HAT in conflict: let D-pad state track
+                        // the held direction so subsequent events won't re-trigger
                     }
-                    if(consumed) { hx = 0; hy = 0; }
+                    if(consumed)
+                    {
+                        if(!isTrigger) { hx = 0; hy = 0; }
+                        // For triggers: suppress the state update so capture "consumes" it
+                        else if(capIdx == INPUT_KEY_INDEX_LT) lt = 0;
+                        else if(capIdx == INPUT_KEY_INDEX_RT) rt = 0;
+                    }
                 }
             }
         }
