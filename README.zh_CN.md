@@ -60,7 +60,7 @@ sh /sdcard/Android/data/com.jingrong.inputredirectionclient_android/files/scrctl
 | A / B | A / B（可交换）|
 | X / Y | X / Y（可交换）|
 | L / R / ZL / ZR | L / R / ZL / ZR |
-| 十字键 | 十字键（自动识别 Joy-Con / Xbox / Pro 手柄）|
+| 十字键 | 十字键 |
 | 左摇杆 | 滑杆 |
 | 右摇杆 | C-Stick |
 | HOME 键 | HOME（默认关闭）|
@@ -75,7 +75,7 @@ sh /sdcard/Android/data/com.jingrong.inputredirectionclient_android/files/scrctl
 - **自定义** — 将任意物理按键映射到任意 3DS 按键。点击按键槽进入捕获模式，再按下目标物理键即可完成映射。冲突自动检测并提示，特殊按键（HOME/POWER/POWEROFF）不可被重新映射。
 - **特殊** — 通过独立开关启用/禁用 HOME / POWER / SHUTDOWN 映射。
 
-手柄类型（Xbox / Joy-Con / Pro Controller）根据十字键输入自动识别并适配按键布局。
+手柄类型（Xbox / Joy-Con / Pro Controller）通过十字键或手柄特有按键自动识别。
 
 ### 连发
 

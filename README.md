@@ -60,7 +60,7 @@ After running this script once, the screen-off service starts in the background.
 | A / B | A / B (swappable) |
 | X / Y | X / Y (swappable) |
 | L / R / ZL / ZR | L / R / ZL / ZR |
-| D-Pad | +Control Pad (auto-detected for Joy-Con / Xbox / Pro Controller) |
+| D-Pad | +Control Pad |
 | Left Stick | Circle Pad |
 | Right Stick | C-Stick |
 | HOME button | HOME (disabled by default) |
@@ -75,7 +75,7 @@ The key mapping area has three tabs:
 - **Custom** — Fully remap any physical button to any 3DS key. Tap any button slot to enter key capture mode, then press the desired physical key. Conflicts are detected and flagged, and special keys (HOME/POWER/POWEROFF) cannot be reassigned.
 - **Special** — Enable or disable HOME / POWER / SHUTDOWN mappings with individual switches.
 
-Controller type (Xbox / Joy-Con / Pro Controller) is auto-detected from D-pad inputs and adapts mappings automatically.
+Controller type (Xbox / Joy-Con / Pro Controller) is auto-detected when a D-pad or controller-specific key is pressed.
 
 ### Turbo
 
