@@ -42,6 +42,8 @@ sh /sdcard/Android/data/com.jingrong.inputredirectionclient_android/files/scrctl
 - **LADB**: Paste into the `Shell command` input box and press Enter.
 - **Computer (ADB)**: Requires ADB environment. Prefix with `adb shell`.
 
+The script prints step-by-step logs with `[ScrCtl]` prefix. On failure, Java crash details are shown for troubleshooting.
+
 After running this script once, the screen-off service starts in the background. It will need to be restarted after a device reboot.
 
 **How to use:**
@@ -51,17 +53,33 @@ After running this script once, the screen-off service starts in the background.
 
 ## Key Mapping
 
+### Default Mapping
+
 | Physical Button | 3DS Button |
 |:-:|:-:|
 | A / B | A / B (swappable) |
 | X / Y | X / Y (swappable) |
 | L / R / ZL / ZR | L / R / ZL / ZR |
-| D-Pad | +Control Pad |
+| D-Pad | +Control Pad (auto-detected for Joy-Con / Xbox / Pro Controller) |
 | Left Stick | Circle Pad |
 | Right Stick | C-Stick |
 | HOME button | HOME (disabled by default) |
-| SHARE button | Power short press (disabled by default) |
+| SHARE / Capture button | Power short press (disabled by default) |
 | L3 + R3 | Power long press / shutdown (disabled by default) |
+
+### Key Mapping Modes
+
+The key mapping area has three tabs:
+
+- **Simple** — A⇌B / X⇌Y swap switches plus stick swap.
+- **Custom** — Fully remap any physical button to any 3DS key. Tap any button slot to enter key capture mode, then press the desired physical key. Conflicts are detected and flagged, and special keys (HOME/POWER/POWEROFF) cannot be reassigned.
+- **Special** — Enable or disable HOME / POWER / SHUTDOWN mappings with individual switches.
+
+Controller type (Xbox / Joy-Con / Pro Controller) is auto-detected from D-pad inputs and adapts mappings automatically.
+
+### Turbo
+
+Turbo (rapid fire) can be enabled per key (A/B/X/Y/L/R/ZL/ZR) in semi-auto or full-auto mode. The turbo interval and per-key settings are configurable. The "Disable All" button turns off all turbo at once.
 
 ## Q&A
 

@@ -42,6 +42,8 @@ sh /sdcard/Android/data/com.jingrong.inputredirectionclient_android/files/scrctl
 - **LADB**：粘贴到`Shell command`输入框，按回车键执行。
 - **电脑（ADB）**：需要ADB环境，在命令前加 `adb shell`。
 
+脚本执行时会输出 `[ScrCtl]` 标记的分步日志，启动失败时自动打印 Java 崩溃信息方便排查。
+
 执行一次后，熄屏服务会在后台运行。设备重启后需要重新执行。
 
 **使用方法：**
@@ -51,17 +53,33 @@ sh /sdcard/Android/data/com.jingrong.inputredirectionclient_android/files/scrctl
 
 ## 按键映射
 
+### 默认映射
+
 | 物理按键 | 3DS 按键 |
 |:-:|:-:|
 | A / B | A / B（可交换）|
 | X / Y | X / Y（可交换）|
 | L / R / ZL / ZR | L / R / ZL / ZR |
-| 十字键 | 十字键 |
+| 十字键 | 十字键（自动识别 Joy-Con / Xbox / Pro 手柄）|
 | 左摇杆 | 滑杆 |
 | 右摇杆 | C-Stick |
 | HOME 键 | HOME（默认关闭）|
-| SHARE 键 | 电源短按（默认关闭）|
+| 分享/截图键 | 电源短按（默认关闭）|
 | L3 + R3 | 长按关机（默认关闭）|
+
+### 映射模式
+
+按键映射区域提供三个标签页：
+
+- **简单** — A⇌B / X⇌Y 互换开关 + 摇杆交换。
+- **自定义** — 将任意物理按键映射到任意 3DS 按键。点击按键槽进入捕获模式，再按下目标物理键即可完成映射。冲突自动检测并提示，特殊按键（HOME/POWER/POWEROFF）不可被重新映射。
+- **特殊** — 通过独立开关启用/禁用 HOME / POWER / SHUTDOWN 映射。
+
+手柄类型（Xbox / Joy-Con / Pro Controller）根据十字键输入自动识别并适配按键布局。
+
+### 连发
+
+支持为 A/B/X/Y/L/R/ZL/ZR 八个键单独开启连发，分半自动和全自动两种模式。可调节连发间隔，也可一键关闭全部连发。
 
 ## Q&A
 
