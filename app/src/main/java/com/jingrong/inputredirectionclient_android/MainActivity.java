@@ -527,7 +527,8 @@ public class MainActivity extends GameActivity {
 
     private void showAbout() {
         String aboutMsg = getString(R.string.about_msg)
-                + "<br><br>" + getString(R.string.about_version, BuildConfig.VERSION_NAME);
+                + "<br>" + getString(R.string.about_version, BuildConfig.VERSION_NAME)
+                + "<br><br>" + getString(R.string.about_disclaimer);
         AlertDialog dlg = new AlertDialog.Builder(this)
                 .setTitle(getString(R.string.about_title))
                 .setMessage(Html.fromHtml(aboutMsg))

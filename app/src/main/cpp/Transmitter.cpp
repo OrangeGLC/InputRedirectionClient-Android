@@ -1017,11 +1017,8 @@ void Transmitter::HandleInputEvent()
     {
         /* No input event arrives*/
         if(NeedTurbo())
-        {
             GenerateFrame();
-            SendFrame();
-            return;
-        }
+
         if(std::chrono::duration_cast<std::chrono::milliseconds>(
                clock::now() - mLastSendTime).count() >= IDLE_FRAME_INTERVAL_MS)
         {
@@ -1046,7 +1043,10 @@ void Transmitter::HandleInputEvent()
     }
 
     GenerateFrame();
-    SendFrame();
+    // When turbo is active, defer the send so the new key merges into
+    // the next turbo frame as a combined event instead of a separate frame.
+    if (!NeedTurbo())
+        SendFrame();
 }
 
 void Transmitter::MotionEventToFrameData()
