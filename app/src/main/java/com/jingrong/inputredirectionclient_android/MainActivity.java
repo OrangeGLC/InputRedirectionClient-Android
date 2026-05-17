@@ -573,6 +573,19 @@ public class MainActivity extends GameActivity {
         super.onDestroy();
     }
 
+    /** Returns negative if v1 < v2, zero if equal, positive if v1 > v2. */
+    private static int compareVersion(String v1, String v2) {
+        String[] a = v1.split("\\.");
+        String[] b = v2.split("\\.");
+        int len = Math.max(a.length, b.length);
+        for (int i = 0; i < len; i++) {
+            int ai = i < a.length ? Integer.parseInt(a[i]) : 0;
+            int bi = i < b.length ? Integer.parseInt(b[i]) : 0;
+            if (ai != bi) return ai - bi;
+        }
+        return 0;
+    }
+
     public static boolean isValidIP(String ip) {
         try {
             String[] parts = ip.split("\\.");
@@ -836,7 +849,7 @@ public class MainActivity extends GameActivity {
                 reader.close();
                 JSONObject json = new JSONObject(sb.toString());
                 String latest = json.getString("tag_name").replaceFirst("^v", "");
-                if (!latest.equals(BuildConfig.VERSION_NAME)) {
+                if (compareVersion(BuildConfig.VERSION_NAME, latest) < 0) {
                     String releaseUrl = isZh
                             ? "https://gitee.com/rojing/InputRedirectionClient-Android/releases/tag/v" + latest
                             : json.getString("html_url");
