@@ -233,6 +233,7 @@ typedef struct AxisValue
 /* Config and timing */
 #define CONFIG_FILE_MAX_SIZE    65536
 #define IDLE_FRAME_INTERVAL_MS  5
+#define TURBO_ON_DURATION_MS     50
 #define DEFAULT_TURBO_INTERVAL  60
 #define AXIS_INT_SCALE          1000
 

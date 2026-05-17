@@ -571,10 +571,23 @@ void Transmitter::OutputKeyIndexToFrameData(N3DS_KEY_INDEX outIndex)
     {
         auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
             clock::now() - mLastTurboTime[outIndex]).count();
-        if(elapsed >= (int64_t)mCfg.gamepadCfg.turboIntervalMs)
+        if(mTurboMark[outIndex])
         {
-            mTurboMark[outIndex] = !mTurboMark[outIndex];
-            mLastTurboTime[outIndex] = clock::now();
+            // OFF phase (key skipped): wait for configured interval, then press
+            if(elapsed >= (int64_t)mCfg.gamepadCfg.turboIntervalMs)
+            {
+                mTurboMark[outIndex] = false;
+                mLastTurboTime[outIndex] = clock::now();
+            }
+        }
+        else
+        {
+            // ON phase (key applied): hold for fixed short duration, then release
+            if(elapsed >= TURBO_ON_DURATION_MS)
+            {
+                mTurboMark[outIndex] = true;
+                mLastTurboTime[outIndex] = clock::now();
+            }
         }
         if(mTurboMark[outIndex])
             return;
