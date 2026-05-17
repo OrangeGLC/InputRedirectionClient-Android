@@ -21,8 +21,8 @@
    > **注意**：如果使用 NS Joy-Con，建议在蓝牙设置中将设备名称改为 `Nintendo`，可减少延迟。
 3. 在 3DS 上启动 InputRedirection 服务：
    1. 打开 Rosalina 菜单（`L + Select + 十字键下`）。
-   2. 选择 `Miscellaneous options...` 并按 `A` 进入。
-   3. 选择 `Start InputRedirection` 并按 `A` 启动。显示 `Starting InputRedirection... OK` 后按 `B` 返回，下屏右上角会显示 3DS 的 IP 地址。
+   2. 选择 `Miscellaneous options...` (中文界面里是`其他选项`)并按 `A` 进入。
+   3. 选择 `Start InputRedirection` (中文界面里是`开始输入重定向`)并按 `A` 启动。显示 `Starting InputRedirection... OK` (中文界面里是`开始输入重定向... 完成`)后按 `B` 返回，下屏右上角会显示 3DS 的 IP 地址。
 4. 在本 APP 中输入 3DS 的 IP 地址，点击**保存**。连接的手柄即可操控 3DS。
 
 ### 熄屏功能（非锁屏）
